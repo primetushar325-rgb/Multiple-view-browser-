@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.MultiView" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/accent</item>
+        <item name="colorSecondary">@color/accent</item>
+        <item name="android:statusBarColor">?attr/colorSurface</item>
+        <item name="mvPaneBackground">@color/pane_bg_night</item>
+        <item name="mvIconTint">@color/icon_tint_night</item>
+    </style>
+</resources>

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MultiView</string>
+
+    <!-- Pane header -->
+    <string name="pane_reload">Reload</string>
+    <string name="pane_maximize">Maximize</string>
+    <string name="pane_close">Close pane</string>
+    <string name="pane_profile">Profile mode</string>
+    <string name="pane_add">Add pane</string>
+    <string name="pane_new_tab">New page</string>
+    <string name="badge_format">P%1$d</string>
+
+    <!-- Toolbar -->
+    <string name="action_layout">Layout</string>
+    <string name="action_settings">Settings</string>
+    <string name="action_share">Share focused page</string>
+    <string name="action_copy">Copy link</string>
+    <string name="action_find">Find in page</string>
+    <string name="action_desktop">Desktop site</string>
+    <string name="action_external">Open in external browser</string>
+    <string name="action_clear">Clear browsing data</string>
+    <string name="panes_count">%1$d panes</string>
+
+    <!-- Site picker -->
+    <string name="site_picker_title">Load a site</string>
+    <string name="site_picker_hint">Custom URL or search</string>
+    <string name="site_picker_go">Go</string>
+
+    <!-- Layout picker -->
+    <string name="layout_picker_title">Choose a layout</string>
+
+    <!-- Find -->
+    <string name="find_title">Find in page</string>
+    <string name="find_hint">Search this page</string>
+    <string name="find_matches">%1$d of %2$d</string>
+    <string name="find_no_match">No matches</string>
+    <string name="find_next">Next</string>
+    <string name="find_prev">Previous</string>
+    <string name="find_close">Close</string>
+
+    <!-- Messages -->
+    <string name="msg_pane_limit">Pane limit reached (%1$d). Close a pane first.</string>
+    <string name="msg_copied">Link copied</string>
+    <string name="msg_no_app">No app found for this link</string>
+    <string name="msg_offline">You are offline</string>
+    <string name="msg_cleared">Browsing data cleared</string>
+    <string name="msg_no_focused_pane">No pane is focused</string>
+    <string name="msg_profile_unsupported">Not supported on this device — please update Android System WebView</string>
+    <string name="msg_profile_on">Isolated profile: %1$s</string>
+    <string name="msg_profile_off">Shared profile</string>
+    <string name="msg_isolated_hint">Isolated panes keep their own login. In shared mode use Gmail\'s own account switcher.</string>
+    <string name="msg_isolated_many">5+ isolated panes use a lot of memory. Consider fewer.</string>
+    <string name="msg_low_ram">Low-memory device: pane limit reduced to %1$d</string>
+    <string name="msg_downloading">Downloading %1$s</string>
+    <string name="msg_download_done">Download complete</string>
+    <string name="msg_download_open">Open</string>
+    <string name="msg_perm_denied">Permission denied — the feature stays disabled</string>
+
+    <!-- Error page -->
+    <string name="err_title">Page did not load</string>
+    <string name="err_retry">Retry</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="set_default_layout">Default layout</string>
+    <string name="set_restore_panes">Restore panes on start</string>
+    <string name="set_adblock">Ad &amp; tracker blocker</string>
+    <string name="set_adblock_blocked">%1$d requests blocked</string>
+    <string name="set_force_dark">Force dark web content</string>
+    <string name="set_text_zoom">Text zoom: %1$d%%</string>
+    <string name="set_isolate_default">Isolate new panes by default</string>
+    <string name="set_clear_data">Clear browsing data</string>
+    <string name="set_clear_cookies">Cookies and site data</string>
+    <string name="set_clear_cache">Cached files</string>
+    <string name="set_clear_history">History</string>
+    <string name="set_clear_now">Clear</string>
+    <string name="set_about_body">MultiView %1$s\nMIT licensed, free and open source.\nNo accounts, no API keys, no tracking.</string>
+
+    <!-- Permissions -->
+    <string name="perm_camera_title">Camera access</string>
+    <string name="perm_camera_body">This page wants to use the camera.</string>
+    <string name="perm_mic_title">Microphone access</string>
+    <string name="perm_mic_body">This page wants to use the microphone.</string>
+    <string name="perm_loc_title">Location access</string>
+    <string name="perm_loc_body">This page wants to know your location.</string>
+    <string name="perm_allow">Allow</string>
+    <string name="perm_deny">Deny</string>
+    <string name="dialog_cancel">Cancel</string>
+</resources>

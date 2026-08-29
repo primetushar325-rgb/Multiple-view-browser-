@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:parentTag="android.widget.LinearLayout">
+
+    <LinearLayout
+        android:id="@+id/paneHeader"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/pane_header_height"
+        android:background="@drawable/bg_pane_header"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="6dp"
+        android:paddingEnd="2dp">
+
+        <TextView
+            android:id="@+id/paneBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
+            android:background="@drawable/bg_badge"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:textColor="#FFFFFFFF"
+            android:textSize="10sp"
+            android:visibility="gone"
+            tools:text="P1" />
+
+        <ImageView
+            android:id="@+id/paneIcon"
+            android:layout_width="@dimen/pane_icon"
+            android:layout_height="@dimen/pane_icon"
+            android:layout_marginEnd="6dp"
+            android:contentDescription="@string/app_name"
+            android:src="@drawable/ic_globe"
+            app:tint="?attr/mvIconTint" />
+
+        <TextView
+            android:id="@+id/paneTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textSize="13sp"
+            tools:text="mail.google.com" />
+
+        <ImageView
+            android:id="@+id/paneProfile"
+            android:layout_width="@dimen/pane_button"
+            android:layout_height="@dimen/pane_button"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/pane_profile"
+            android:padding="6dp"
+            android:src="@drawable/ic_person"
+            app:tint="?attr/mvIconTint" />
+
+        <ImageView
+            android:id="@+id/paneReload"
+            android:layout_width="@dimen/pane_button"
+            android:layout_height="@dimen/pane_button"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/pane_reload"
+            android:padding="6dp"
+            android:src="@drawable/ic_reload"
+            app:tint="?attr/mvIconTint" />
+
+        <ImageView
+            android:id="@+id/paneMaximize"
+            android:layout_width="@dimen/pane_button"
+            android:layout_height="@dimen/pane_button"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/pane_maximize"
+            android:padding="6dp"
+            android:src="@drawable/ic_maximize"
+            app:tint="?attr/mvIconTint" />
+
+        <ImageView
+            android:id="@+id/paneClose"
+            android:layout_width="@dimen/pane_button"
+            android:layout_height="@dimen/pane_button"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/pane_close"
+            android:padding="6dp"
+            android:src="@drawable/ic_close"
+            app:tint="?attr/mvIconTint" />
+    </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/paneWebHolder"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+</merge>

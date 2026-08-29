@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="pane_header_height">48dp</dimen>
+    <dimen name="pane_gap">2dp</dimen>
+    <dimen name="pane_icon">18dp</dimen>
+    <dimen name="pane_button">32dp</dimen>
+    <dimen name="sheet_padding">16dp</dimen>
+    <dimen name="preset_icon">28dp</dimen>
+</resources>

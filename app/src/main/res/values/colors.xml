@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="accent">#FF4A6CF7</color>
+    <color name="accent_dim">#334A6CF7</color>
+    <color name="pane_bg">#FFFFFFFF</color>
+    <color name="pane_bg_night">#FF141414</color>
+    <color name="pane_stroke">#33000000</color>
+    <color name="badge_bg">#FF7C4DFF</color>
+    <color name="icon_tint">#FF000000</color>
+    <color name="icon_tint_night">#FFFFFFFF</color>
+</resources>
