@@ -119,7 +119,7 @@ class MainActivity : AppCompatActivity(), PaneHost {
             if (isolated) {
                 Snackbar.make(
                     b.root,
-                    getString(R.string.msg_profile_on, ProfilePlan.profileIdFor(pane.index)),
+                    getString(R.string.msg_profile_on, pane.identity.profileId),
                     Snackbar.LENGTH_SHORT,
                 ).show()
             } else {
@@ -395,18 +395,12 @@ class MainActivity : AppCompatActivity(), PaneHost {
     override fun onRequestExternal(url: String) = openExternal(url)
 
     override fun onRenderProcessGone(paneIndex: Int) {
-        // Rebuild only this pane; the others keep running untouched.
-        val pane = paneManager.panes.getOrNull(paneIndex) ?: return
-        val url = pane.currentUrl
-        val mode = pane.profileMode
-        pane.destroyCompletely()
-        paneManager.panes.removeAt(paneIndex)
-        paneManager.restore(PanesSnapshot(
-            paneManager.panes.map { com.example.multiview.data.PaneState(it.currentUrl, it.currentTitle, it.profileMode) },
-            paneManager.focusedIndex,
-        ))
-        val rebuilt = paneManager.panes.getOrNull(paneIndex) ?: paneManager.addPane(mode)
-        rebuilt?.webView?.loadUrl(url.ifEmpty { "about:blank" })
+        // Only THIS pane is rebuilt. Calling restore() here would have torn
+        // down every other pane and its live page, which is exactly what a
+        // renderer crash must not cause.
+        val url = paneManager.panes.getOrNull(paneIndex)?.currentUrl.orEmpty()
+        val rebuilt = paneManager.recreatePane(paneIndex) ?: return
+        rebuilt.showCrashedState(url)
         refreshBadges()
     }
 

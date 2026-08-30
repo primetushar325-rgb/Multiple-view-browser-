@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import com.example.multiview.browser.PaneHost
+import com.example.multiview.data.PaneIdentity
 import com.example.multiview.data.PaneState
 import com.example.multiview.data.PanesSnapshot
 import com.example.multiview.data.ProfileMode
@@ -17,6 +18,10 @@ import com.example.multiview.data.ProfileMode
  * parent and re-attached to the new one, so scroll position, history and any
  * in-progress load all survive. The same is true for maximizing, which simply
  * builds a one-cell grid out of the focused pane.
+ *
+ * Every pane is built by [createPane] and every pane carries a permanent
+ * [PaneIdentity], so closing or reordering panes changes positions but never
+ * makes one account's session belong to another pane.
  */
 class PaneManager(
     private val context: Context,
@@ -52,6 +57,12 @@ class PaneManager(
     /** Fired when the user goes past the recommended number of isolated panes. */
     var onTooManyIsolated: (() -> Unit)? = null
 
+    /**
+     * Fired once for every newly created pane so callers can wire the parts
+     * that live outside this class (for example opening a URL externally).
+     */
+    var onPaneCreated: ((PaneView) -> Unit)? = null
+
     private fun reportIsolatedCount() {
         if (isolatedCount() >= ISOLATED_WARN_AT) onTooManyIsolated?.invoke()
     }
@@ -63,6 +74,27 @@ class PaneManager(
         pane.webView.setDownloadListener { url, _, disposition, mimeType, length ->
             onDownload?.invoke(url, disposition, mimeType, length)
         }
+    }
+
+    /**
+     * The ONLY place a PaneView is constructed.
+     *
+     * Keeping construction in one spot is what makes identity trustworthy:
+     * there is exactly one path that decides a pane's profile, so a pane can
+     * never end up bound to a profile chosen from its array position.
+     */
+    private fun createPane(index: Int, identity: PaneIdentity, mode: ProfileMode): PaneView {
+        val supported = IsolatedProfileFactory.isSupported()
+        val profileName = ProfilePlan.profileNameFor(identity, mode, supported)
+        val pane = PaneView(context, index, identity, host, profileName)
+        pane.isolatedInEffect = profileName != null
+        pane.profileMode = if (profileName != null) ProfileMode.ISOLATED else ProfileMode.SHARED
+        pane.onCloseClick = { closePane(it.index) }
+        pane.onMaximizeClick = { maximize(it.index) }
+        pane.onProfileClick = { toggleProfile(it) }
+        wireDownloads(pane)
+        onPaneCreated?.invoke(pane)
+        return pane
     }
 
     fun focusedPane(): PaneView? = panes.getOrNull(focusedIndex)
@@ -88,21 +120,18 @@ class PaneManager(
     fun isMaximized(): Boolean = maximizedIndex >= 0
 
     /** @return the new pane, or null when the cap was hit. */
-    fun addPane(mode: ProfileMode? = null, url: String? = null): PaneView? {
+    fun addPane(
+        mode: ProfileMode? = null,
+        url: String? = null,
+        identity: PaneIdentity = PaneIdentity.newIdentity(),
+    ): PaneView? {
         if (panes.size >= paneCap) {
             onLimitReached?.invoke(paneCap)
             return null
         }
         val index = panes.size
         val wanted = mode ?: if (defaultIsolate) ProfileMode.ISOLATED else ProfileMode.SHARED
-        val profileName = ProfilePlan.profileNameFor(index, wanted, IsolatedProfileFactory.isSupported())
-        val pane = PaneView(context, index, host, profileName)
-        pane.isolatedInEffect = profileName != null
-        pane.profileMode = if (profileName != null) ProfileMode.ISOLATED else ProfileMode.SHARED
-        pane.onCloseClick = { closePane(it.index) }
-        pane.onMaximizeClick = { maximize(it.index) }
-        pane.onProfileClick = { toggleProfile(it) }
-        wireDownloads(pane)
+        val pane = createPane(index, identity, wanted)
         panes += pane
         focusedIndex = index
         refresh()
@@ -116,6 +145,7 @@ class PaneManager(
         pane.destroyCompletely()
         panes.removeAt(index)
         // Indices are positional, so renumber what is left and keep focus sane.
+        // Identities are NOT renumbered - they are permanent.
         panes.forEachIndexed { i, p -> reindex(p, i) }
         if (panes.isEmpty()) focusedIndex = 0 else focusedIndex = focusedIndex.coerceIn(0, panes.size - 1)
         if (maximizedIndex >= panes.size) maximizedIndex = -1
@@ -127,6 +157,10 @@ class PaneManager(
      * Flipping a pane between shared and isolated has to rebuild its WebView:
      * a WebView's profile is fixed at creation time. The page is reloaded, but
      * no other pane is disturbed.
+     *
+     * The pane keeps its ORIGINAL identity, so switching a pane back to
+     * isolated lands on the same profile it used before - the user's login on
+     * that pane is still there instead of being replaced by a blank profile.
      */
     fun toggleProfile(pane: PaneView) {
         val next = if (pane.profileMode == ProfileMode.ISOLATED) ProfileMode.SHARED else ProfileMode.ISOLATED
@@ -137,30 +171,55 @@ class PaneManager(
         val index = pane.index
         val url = pane.currentUrl
         val desktop = pane.desktopSite
+        val email = pane.accountEmail
         pane.destroyCompletely()
         panes.removeAt(index)
-        val replacement = addPaneAt(index, next, url)
-        replacement?.setDesktopMode(desktop)
+        val replacement = addPaneAt(index, next, url, pane.identity)
+        replacement?.let {
+            it.accountEmail = email
+            it.setDesktopMode(desktop)
+        }
         refresh()
         replacement?.let { onProfileChanged?.invoke(it, it.isolatedInEffect) }
         reportIsolatedCount()
     }
 
-    private fun addPaneAt(index: Int, mode: ProfileMode, url: String?): PaneView {
-        val profileName = ProfilePlan.profileNameFor(index, mode, IsolatedProfileFactory.isSupported())
-        val pane = PaneView(context, index, host, profileName)
-        pane.isolatedInEffect = profileName != null
-        pane.profileMode = if (profileName != null) ProfileMode.ISOLATED else ProfileMode.SHARED
-        pane.onCloseClick = { closePane(it.index) }
-        pane.onMaximizeClick = { maximize(it.index) }
-        pane.onProfileClick = { toggleProfile(it) }
-        wireDownloads(pane)
+    private fun addPaneAt(index: Int, mode: ProfileMode, url: String?, identity: PaneIdentity): PaneView {
+        val pane = createPane(index, identity, mode)
         panes.add(index, pane)
         panes.forEachIndexed { i, p -> reindex(p, i) }
         focusedIndex = index
         if (!url.isNullOrEmpty()) pane.webView.loadUrl(url)
         onPanesChanged?.invoke()
         return pane
+    }
+
+    /**
+     * Rebuilds ONE pane after its renderer died, keeping the same identity so
+     * the profile (and therefore the login) is unchanged.
+     *
+     * Deliberately does not reload the page: the caller shows a recovery state
+     * with a Retry button so the user decides, rather than the app silently
+     * reloading a page that may have been mid-transaction.
+     *
+     * @return the replacement pane, or null when the index was out of range.
+     */
+    fun recreatePane(index: Int): PaneView? {
+        val old = panes.getOrNull(index) ?: return null
+        val identity = old.identity
+        val mode = old.profileMode
+        val url = old.currentUrl
+        val title = old.currentTitle
+        val desktop = old.desktopSite
+        val email = old.accountEmail
+        old.destroyCompletely()
+        val replacement = createPane(index, identity, mode)
+        replacement.accountEmail = email
+        if (desktop) replacement.setDesktopMode(true)
+        replacement.updateHeader(url, title)
+        panes[index] = replacement
+        refresh()
+        return replacement
     }
 
     /** Closing a pane shifts the survivors down; keep their index truthful. */
@@ -225,7 +284,18 @@ class PaneManager(
     }
 
     fun snapshot(): PanesSnapshot = PanesSnapshot(
-        panes = panes.map { PaneState(it.currentUrl, it.currentTitle, it.profileMode) },
+        panes = panes.map {
+            PaneState(
+                paneId = it.identity.paneId,
+                profileId = it.identity.profileId,
+                url = it.currentUrl,
+                title = it.currentTitle,
+                profileMode = it.profileMode,
+                desktopMode = it.desktopSite,
+                accountEmail = it.accountEmail,
+                createdAt = it.createdAt,
+            )
+        },
         focusedIndex = focusedIndex,
     )
 
@@ -233,7 +303,12 @@ class PaneManager(
         panes.forEach { it.destroyCompletely() }
         panes.clear()
         snapshot.panes.forEach { state ->
-            val pane = addPane(state.profileMode, null) ?: return
+            // Passing state.identity is the whole point of stable ids: a
+            // restored pane reattaches to the SAME profile it had before the
+            // restart, so its Google session is still signed in.
+            val pane = addPane(state.profileMode, null, state.identity) ?: return
+            pane.accountEmail = state.accountEmail
+            if (state.desktopMode) pane.setDesktopMode(true)
             if (state.url.isNotEmpty()) pane.webView.loadUrl(state.url)
             pane.updateHeader(state.url, state.title)
         }
@@ -248,6 +323,10 @@ class PaneManager(
     fun applyTextZoom(zoom: Int) = panes.forEach { it.applyTextZoom(zoom) }
 
     fun isolatedCount(): Int = panes.count { it.isolatedInEffect }
+
+    /** The profile name of one pane, for the "signed in as" summary. */
+    fun accountEmails(): List<Pair<String, String>> =
+        panes.mapNotNull { p -> p.accountEmail.takeIf { it.isNotBlank() }?.let { p.identity.profileId to it } }
 
     fun destroyAll() {
         panes.forEach { it.destroyCompletely() }

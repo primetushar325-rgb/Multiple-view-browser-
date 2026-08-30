@@ -4,50 +4,50 @@ import android.webkit.WebView
 import androidx.webkit.ProfileStore
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
+import com.example.multiview.data.PaneIdentity
 import com.example.multiview.data.ProfileMode
 import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Everything about per-pane profiles lives here.
+ * Everything about per-pane profiles lives in this one file.
  *
  * The pure half ([ProfilePlan]) carries no androidx.webkit reference, so it is
  * safe to unit-test on the JVM. The Android half is guarded by
  * WebViewFeature.MULTI_PROFILE and wrapped in try/catch: if the installed
  * Android System WebView is too old, panes silently fall back to shared mode
  * instead of crashing.
+ *
+ * Verified against androidx.webkit 1.12.1 with javap - the real API is
+ * `ProfileStore.getInstance()` (no context), `getOrCreateProfile(name)` and
+ * `WebViewCompat.setProfile(WebView, name)`. There is no `Profile.getWebView`.
  */
 object ProfilePlan {
 
-    private const val K_INDEX = "i"
+    private const val K_ID = "id"
     private const val K_MODE = "m"
 
-    /**
-     * Profile ids are derived from the pane index, never random, so pane 3 gets
-     * the same cookie store after every restart and its Gmail login survives.
-     */
-    fun profileIdFor(paneIndex: Int): String = "mv-pane-$paneIndex"
-
-    fun encode(modes: Map<Int, ProfileMode>): String {
+    fun encode(modes: Map<String, ProfileMode>): String {
         val arr = JSONArray()
-        modes.toSortedMap().forEach { (index, mode) ->
-            arr.put(JSONObject().put(K_INDEX, index).put(K_MODE, mode.name))
+        modes.toSortedMap().forEach { (paneId, mode) ->
+            arr.put(JSONObject().put(K_ID, paneId).put(K_MODE, mode.name))
         }
         return arr.toString()
     }
 
     /** Never throws; unknown modes degrade to SHARED. */
-    fun decode(json: String?): Map<Int, ProfileMode> {
+    fun decode(json: String?): Map<String, ProfileMode> {
         if (json.isNullOrBlank()) return emptyMap()
         return try {
             val arr = JSONArray(json)
-            val out = LinkedHashMap<Int, ProfileMode>()
+            val out = LinkedHashMap<String, ProfileMode>()
             for (i in 0 until arr.length()) {
                 val o = arr.optJSONObject(i) ?: continue
-                val index = o.optInt(K_INDEX, -1)
-                if (index < 0) continue
-                out[index] = runCatching { ProfileMode.valueOf(o.optString(K_MODE, ProfileMode.SHARED.name)) }
-                    .getOrDefault(ProfileMode.SHARED)
+                val id = o.optString(K_ID, "")
+                if (id.isBlank()) continue
+                out[id] = runCatching {
+                    ProfileMode.valueOf(o.optString(K_MODE, ProfileMode.SHARED.name))
+                }.getOrDefault(ProfileMode.SHARED)
             }
             out
         } catch (t: Throwable) {
@@ -57,14 +57,24 @@ object ProfilePlan {
 
     /**
      * The single decision point for "can this pane actually be isolated?".
-     * Pure so the fallback path is testable without a device.
+     * Pure, so the fallback path is testable without a device.
      */
     fun effectiveMode(requested: ProfileMode, profileStoreAvailable: Boolean): ProfileMode =
         if (requested == ProfileMode.ISOLATED && !profileStoreAvailable) ProfileMode.SHARED else requested
 
-    /** Effective profile name, or null when the pane should stay on the shared store. */
-    fun profileNameFor(paneIndex: Int, mode: ProfileMode, profileStoreAvailable: Boolean): String? =
-        if (effectiveMode(mode, profileStoreAvailable) == ProfileMode.ISOLATED) profileIdFor(paneIndex) else null
+    /**
+     * Effective WebView profile name for a pane, or null when the pane should
+     * stay on the shared cookie store.
+     *
+     * Keyed by the pane's permanent [identity], never by its visual position,
+     * so a pane that moves slot keeps the same session.
+     */
+    fun profileNameFor(
+        identity: PaneIdentity,
+        mode: ProfileMode,
+        profileStoreAvailable: Boolean,
+    ): String? =
+        if (effectiveMode(mode, profileStoreAvailable) == ProfileMode.ISOLATED) identity.profileId else null
 }
 
 /** Android half: talks to androidx.webkit and never lets a failure escape. */
@@ -84,13 +94,28 @@ object IsolatedProfileFactory {
      * @return false when unsupported or when anything went wrong - callers then
      *   keep the pane on the shared cookie store.
      */
-    // The MULTI_PROFILE guard lives in isSupported() above; lint cannot follow
-    // that call through a helper, so the check is asserted here instead.
+    // The MULTI_PROFILE guard lives in isSupported(); lint cannot follow that
+    // call through a helper, so the check is asserted here instead.
     @android.annotation.SuppressLint("RequiresFeature")
     fun attach(webView: WebView, profileName: String): Boolean = runCatching {
         if (!isSupported()) return@runCatching false
         ProfileStore.getInstance().getOrCreateProfile(profileName)
         WebViewCompat.setProfile(webView, profileName)
+        true
+    }.getOrDefault(false)
+
+    /**
+     * Clears ONE profile's cookies and web storage.
+     *
+     * This is what makes per-pane logout safe: the global CookieManager is
+     * never touched, so logging pane 2 out leaves panes 1, 3 and 4 signed in.
+     */
+    @android.annotation.SuppressLint("RequiresFeature")
+    fun clearProfile(profileName: String): Boolean = runCatching {
+        if (!isSupported()) return@runCatching false
+        val profile = ProfileStore.getInstance().getOrCreateProfile(profileName)
+        profile.cookieManager?.removeAllCookies(null)
+        profile.webStorage?.deleteAllData()
         true
     }.getOrDefault(false)
 }

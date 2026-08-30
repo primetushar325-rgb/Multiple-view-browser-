@@ -36,15 +36,32 @@
             android:src="@drawable/ic_globe"
             app:tint="?attr/mvIconTint" />
 
-        <TextView
-            android:id="@+id/paneTitle"
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textSize="13sp"
-            tools:text="mail.google.com" />
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/paneTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textSize="13sp"
+                tools:text="mail.google.com" />
+
+            <TextView
+                android:id="@+id/paneAccount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/accent"
+                android:textSize="9sp"
+                android:visibility="gone"
+                tools:text="account1@gmail.com" />
+        </LinearLayout>
 
         <ImageView
             android:id="@+id/paneProfile"
@@ -91,6 +108,66 @@
         android:id="@+id/paneWebHolder"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="1">
+
+        <!-- Covers the WebView while loading and offers recovery on failure,
+             so a pane never sits there as a blank black rectangle.
+             The WebView itself is inserted below this at index 0. -->
+        <LinearLayout
+            android:id="@+id/paneState"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="?attr/mvPaneBackground"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:visibility="gone">
+
+            <ProgressBar
+                android:id="@+id/paneSpinner"
+                style="?android:attr/progressBarStyleLarge"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:indeterminateTint="@color/accent" />
+
+            <TextView
+                android:id="@+id/paneStateText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center"
+                android:textColor="?attr/mvIconTint"
+                android:textSize="12sp"
+                tools:text="Loading…" />
+
+            <LinearLayout
+                android:id="@+id/paneStateActions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/paneRetry"
+                    android:layout_width="wrap_content"
+                    android:layout_height="38dp"
+                    android:minWidth="120dp"
+                    android:text="@string/err_retry"
+                    android:textSize="12sp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/paneOpenExternal"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="38dp"
+                    android:layout_marginTop="4dp"
+                    android:minWidth="120dp"
+                    android:text="@string/err_open_external"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </LinearLayout>
+    </FrameLayout>
 
 </merge>

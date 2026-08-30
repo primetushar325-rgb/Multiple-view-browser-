@@ -14,6 +14,19 @@
     <!-- Toolbar -->
     <string name="action_layout">Layout</string>
     <string name="action_settings">Settings</string>
+
+    <!-- Per-pane loading and error states -->
+    <string name="ellipsis">…</string>
+    <string name="state_loading">Loading…</string>
+    <string name="err_open_external">Open in external browser</string>
+    <string name="err_crashed">This screen stopped responding.</string>
+    <string name="err_reload">Reload</string>
+    <string name="err_no_internet">No internet connection. Check your network and retry.</string>
+    <string name="err_ssl">Secure connection failed. The site’s certificate could not be verified.</string>
+    <string name="err_timeout">The site took too long to respond.</string>
+    <string name="err_generic">Could not load this page.</string>
+    <string name="err_dns">Host not found. Check the address and retry.</string>
+
     <string name="action_share">Share focused page</string>
     <string name="action_copy">Copy link</string>
     <string name="action_find">Find in page</string>
