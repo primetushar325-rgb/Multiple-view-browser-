@@ -289,6 +289,28 @@ class PaneView(
         }
     }
 
+    /**
+     * Skips network image loads for this pane. Reversible: focusing the pane
+     * sets this back to false and images appear on the next load.
+     */
+    fun setImagesBlocked(blocked: Boolean) {
+        if (webView.settings.blockNetworkImage == blocked) return
+        webView.settings.blockNetworkImage = blocked
+    }
+
+    /**
+     * Per-instance throttle via WebView.onPause()/onResume().
+     *
+     * Best-effort by contract: it stops animations and geolocation, but it does
+     * not stop JavaScript. The process-wide pauseTimers() is intentionally not
+     * used for this - it would pause every pane, including the focused one.
+     */
+    fun setThrottled(throttled: Boolean) {
+        if (throttled) webView.onPause() else webView.onResume()
+    }
+
+    /** Whole-app background/foreground: these ARE process-wide, and that is
+     *  correct here because the app itself is leaving or returning. */
     fun pauseTimers() = webView.pauseTimers()
     fun resumeTimers() = webView.resumeTimers()
 

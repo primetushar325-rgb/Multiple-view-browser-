@@ -6,6 +6,8 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import com.example.multiview.browser.PaneHost
+import com.example.multiview.browser.PerformanceEngine
+import com.example.multiview.browser.PerformanceMode
 import com.example.multiview.data.PaneIdentity
 import com.example.multiview.data.PaneState
 import com.example.multiview.data.PanesSnapshot
@@ -40,6 +42,12 @@ class PaneManager(
         private set
 
     var defaultIsolate: Boolean = false
+
+    /**
+     * How much background work to suppress. Defaults to FAST: unfocused panes
+     * skip image loads and get throttled, the focused pane never does.
+     */
+    var performanceMode: PerformanceMode = PerformanceMode.FAST
 
     /** Low-RAM devices get a smaller cap (P16). */
     val paneCap: Int = run {
@@ -231,6 +239,25 @@ class PaneManager(
         if (panes.getOrNull(index) == null) return
         focusedIndex = index
         panes.forEachIndexed { i, p -> p.setFocused(i == index) }
+        applyPerformancePolicy()
+    }
+
+    /**
+     * Re-applies the effort budget to every pane.
+     *
+     * Called whenever focus or the layout changes, because both alter which
+     * panes are worth spending CPU and bandwidth on. Every effect here is
+     * reversible and none of it touches the network path: this reduces what the
+     * app asks for, it does not claim to make the connection faster.
+     */
+    fun applyPerformancePolicy() {
+        panes.forEachIndexed { i, pane ->
+            val focused = i == focusedIndex
+            // In a maximized layout only the maximized pane is visible.
+            val visible = maximizedIndex < 0 || i == maximizedIndex
+            pane.setImagesBlocked(PerformanceEngine.shouldBlockImages(performanceMode, focused))
+            pane.setThrottled(PerformanceEngine.shouldThrottle(performanceMode, focused, visible))
+        }
     }
 
     /** Rebuild the grid around the panes that already exist. */
