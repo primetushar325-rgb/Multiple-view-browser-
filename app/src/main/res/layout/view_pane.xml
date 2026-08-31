@@ -108,7 +108,8 @@
         android:id="@+id/paneWebHolder"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_weight="1"
+        android:background="?attr/mvPaneBackground">
 
         <!-- Covers the WebView while loading and offers recovery on failure,
              so a pane never sits there as a blank black rectangle.

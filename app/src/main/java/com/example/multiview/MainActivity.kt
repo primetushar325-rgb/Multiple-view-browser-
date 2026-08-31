@@ -173,7 +173,7 @@ class MainActivity : AppCompatActivity(), PaneHost {
             if (restore && snapshot != null && snapshot.panes.isNotEmpty()) {
                 paneManager.restore(snapshot)
             } else {
-                paneManager.addPane()
+                paneManager.addPane(url = PaneManager.DEFAULT_URL)
             }
             applyLayoutFromSettings()
             if (paneManager.isCappedByHardware) {

@@ -160,7 +160,7 @@ class PaneManager(
         panes += pane
         focusedIndex = index
         refresh()
-        if (!url.isNullOrEmpty()) pane.webView.loadUrl(url)
+        pane.webView.loadUrl(url?.takeIf { it.isNotEmpty() } ?: DEFAULT_URL)
         onPanesChanged?.invoke()
         return pane
     }
@@ -214,7 +214,7 @@ class PaneManager(
         panes.add(index, pane)
         panes.forEachIndexed { i, p -> reindex(p, i) }
         focusedIndex = index
-        if (!url.isNullOrEmpty()) pane.webView.loadUrl(url)
+        pane.webView.loadUrl(url?.takeIf { it.isNotEmpty() } ?: DEFAULT_URL)
         onPanesChanged?.invoke()
         return pane
     }
@@ -350,10 +350,9 @@ class PaneManager(
             // Passing state.identity is the whole point of stable ids: a
             // restored pane reattaches to the SAME profile it had before the
             // restart, so its Google session is still signed in.
-            val pane = addPane(state.profileMode, null, state.identity) ?: return
+            val pane = addPane(state.profileMode, state.url.ifEmpty { null }, state.identity) ?: return
             pane.accountEmail = state.accountEmail
             if (state.desktopMode) pane.setDesktopMode(true)
-            if (state.url.isNotEmpty()) pane.webView.loadUrl(state.url)
             pane.updateHeader(state.url, state.title)
         }
         focus(snapshot.focusedIndex.coerceIn(0, (panes.size - 1).coerceAtLeast(0)))
@@ -379,6 +378,9 @@ class PaneManager(
     }
 
     companion object {
+        /** A pane is never left empty; this is the neutral default page. */
+        const val DEFAULT_URL = "https://www.google.com"
+
         /** Each isolated profile is its own browser instance; warn from the 5th. */
         const val ISOLATED_WARN_AT = 5
     }

@@ -38,6 +38,8 @@ object WebViewFactory {
     fun configure(webView: WebView) {
         val s: WebSettings = webView.settings
         s.javaScriptEnabled = true
+        // No black rectangle while the renderer is still coming up.
+        webView.setBackgroundColor(android.graphics.Color.WHITE)
         s.domStorageEnabled = true
         @Suppress("DEPRECATION")
         s.databaseEnabled = true
