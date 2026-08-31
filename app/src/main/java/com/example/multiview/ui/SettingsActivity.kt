@@ -34,6 +34,7 @@ class SettingsActivity : AppCompatActivity() {
     private var updatingUi = false
     private val repo get() = appContainer.settings
     private val blocklist get() = appContainer.blocklist
+    private val panesRepo get() = appContainer.panes
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,6 +64,8 @@ class SettingsActivity : AppCompatActivity() {
         })
 
         b.btnClearData.setOnClickListener { confirmClear() }
+
+        renderAccounts()
 
         b.tvAbout.text = getString(R.string.set_about_body, BuildConfig.VERSION_NAME)
 
@@ -94,6 +97,43 @@ class SettingsActivity : AppCompatActivity() {
                         b.sliderTextZoom.setSilently(it.toFloat())
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * Lists every screen that shows a signed-in account and offers a logout
+     * per screen. Logout clears ONLY that pane's WebView profile (cookies and
+     * web storage) via the profile API - the shared cookie store and every
+     * other profile are untouched, so the other accounts stay signed in.
+     */
+    private fun renderAccounts() {
+        lifecycleScope.launch {
+            val snap = panesRepo.snapshot.firstOrNull() ?: return@launch
+            val signedIn = snap.panes.filter { it.accountEmail.isNotBlank() }
+            b.tvAccountsTitle.visibility = if (signedIn.isEmpty()) android.view.View.GONE else android.view.View.VISIBLE
+            b.tvAccountsBody.visibility = b.tvAccountsTitle.visibility
+            b.accountsBox.removeAllViews()
+            signedIn.forEach { st ->
+                val row = layoutInflater.inflate(R.layout.item_account, b.accountsBox, false)
+                row.findViewById<android.widget.TextView>(R.id.tvAccountEmail).text = st.accountEmail
+                row.findViewById<android.widget.TextView>(R.id.tvAccountProfile).text =
+                    getString(R.string.set_account_row, st.profileId)
+                row.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnLogout)
+                    .setOnClickListener {
+                        io {
+                            IsolatedProfileFactory.clearProfile(st.profileId)
+                            panesRepo.save(
+                                snap.copy(
+                                    panes = snap.panes.map { p ->
+                                        if (p.paneId == st.paneId) p.copy(accountEmail = "") else p
+                                    },
+                                ),
+                            )
+                            renderAccounts()
+                        }
+                    }
+                b.accountsBox.addView(row)
             }
         }
     }

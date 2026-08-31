@@ -75,6 +75,18 @@
     <string name="err_retry">Retry</string>
 
     <!-- Settings -->
+    <string name="home_title">Open screens</string>
+    <string name="home_url_hint">Address (optional - leave empty for blank screens)</string>
+    <string name="home_paste">Paste</string>
+    <string name="home_screens">How many screens?</string>
+    <string name="home_mode_shared">Shared login (one account for all screens)</string>
+    <string name="home_mode_isolated">Separate login per screen</string>
+    <string name="home_open">Open</string>
+    <string name="home_opening">Opening screens… %1$d/%2$d</string>
+    <string name="set_accounts_title">Signed-in screens</string>
+    <string name="set_accounts_body">Each isolated screen keeps its own login. Logging one out clears only that screen’s profile - the others stay signed in.</string>
+    <string name="set_logout">Log out</string>
+    <string name="set_account_row">%1$s · isolated screen</string>
     <string name="settings_title">Settings</string>
     <string name="set_default_layout">Default layout</string>
     <string name="set_restore_panes">Restore panes on start</string>

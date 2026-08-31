@@ -134,9 +134,11 @@ class PaneView(
         maximizeButton.setOnClickListener { onMaximizeClick?.invoke(this) }
         profileButton.setOnClickListener { onProfileClick?.invoke(this) }
         accountLabel.setOnClickListener { onProfileClick?.invoke(this) }
+        icon.setOnClickListener { onIconClick?.invoke(this) }
         headerReady = true
     }
 
+    var onIconClick: ((PaneView) -> Unit)? = null
     var onCloseClick: ((PaneView) -> Unit)? = null
     var onMaximizeClick: ((PaneView) -> Unit)? = null
     var onProfileClick: ((PaneView) -> Unit)? = null

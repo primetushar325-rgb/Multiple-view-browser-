@@ -37,6 +37,7 @@ import com.example.multiview.panes.LayoutResolver
 import com.example.multiview.panes.PaneManager
 import com.example.multiview.panes.PaneView
 import com.example.multiview.panes.ProfilePlan
+import com.example.multiview.ui.HomeSheet
 import com.example.multiview.ui.FindSheet
 import com.example.multiview.ui.LayoutPickerSheet
 import com.example.multiview.ui.SettingsActivity
@@ -131,6 +132,9 @@ class MainActivity : AppCompatActivity(), PaneHost {
         }
         paneManager.onPaneCreated = { pane ->
             pane.onOpenExternal = { url -> openExternal(url) }
+            pane.onIconClick = { p ->
+                SitePickerSheet(this) { url -> loadInPane(p, url) }.show()
+            }
         }
         paneManager.onTooManyIsolated = {
             Snackbar.make(b.root, R.string.msg_isolated_many, Snackbar.LENGTH_LONG).show()
@@ -283,8 +287,38 @@ class MainActivity : AppCompatActivity(), PaneHost {
     }
 
     private fun addPaneWithPicker() {
-        val pane = paneManager.addPane() ?: return
-        SitePickerSheet(this) { url -> loadInPane(pane, url) }.show()
+        HomeSheet(
+            context = this,
+            paneCap = paneManager.paneCap,
+            defaultIsolate = paneManager.defaultIsolate,
+        ) { url, count, mode -> openHomeScreens(url, count, mode) }.show()
+    }
+
+    /**
+     * Creates the requested screens one by one, keeping the user informed with
+     * a live "Opening screens… n/N" counter instead of a frozen dialog. When
+     * the device cap is hit part-way, the remaining requests are skipped and
+     * the existing limit notice explains why.
+     */
+    private fun openHomeScreens(url: String, count: Int, mode: ProfileMode) {
+        val tv = android.widget.TextView(this).apply {
+            setPadding(64, 56, 64, 24)
+            text = getString(R.string.home_opening, 0, count)
+        }
+        val dialog = android.app.AlertDialog.Builder(this)
+            .setView(tv)
+            .setCancelable(false)
+            .create()
+        dialog.show()
+        lifecycleScope.launch {
+            repeat(count) { i ->
+                tv.text = getString(R.string.home_opening, i + 1, count)
+                paneManager.addPane(mode, url.ifBlank { null })
+                kotlinx.coroutines.delay(120)
+            }
+            dialog.dismiss()
+            refreshBadges()
+        }
     }
 
     private fun openFind(pane: PaneView) {
@@ -605,6 +639,22 @@ class MainActivity : AppCompatActivity(), PaneHost {
     override fun onResume() {
         super.onResume()
         paneManager.resumeAll()
+        syncAccountLabels()
+    }
+
+    /**
+     * A logout performed in Settings clears the persisted email; reflect that
+     * (and any other persisted header metadata) on the live panes.
+     */
+    private fun syncAccountLabels() {
+        lifecycleScope.launch {
+            val snap = panesRepo.snapshot.firstOrNull() ?: return@launch
+            snap.panes.forEach { st ->
+                paneManager.panes.firstOrNull { it.identity.paneId == st.paneId }?.let { p ->
+                    if (p.accountEmail != st.accountEmail) p.accountEmail = st.accountEmail
+                }
+            }
+        }
     }
 
     override fun onDestroy() {

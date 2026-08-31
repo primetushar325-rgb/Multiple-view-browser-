@@ -109,7 +109,28 @@
             android:paddingBottom="12dp"
             android:text="@string/set_isolate_default" />
 
-        <com.google.android.material.button.MaterialButton
+                <TextView
+            android:id="@+id/tvAccountsTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="16dp"
+            android:text="@string/set_accounts_title"
+            android:textAppearance="?attr/textAppearanceTitleSmall" />
+
+        <TextView
+            android:id="@+id/tvAccountsBody"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/set_accounts_body"
+            android:textAppearance="?attr/textAppearanceBodySmall" />
+
+        <LinearLayout
+            android:id="@+id/accountsBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+<com.google.android.material.button.MaterialButton
             android:id="@+id/btnClearData"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
