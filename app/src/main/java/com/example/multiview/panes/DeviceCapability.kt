@@ -54,13 +54,14 @@ object DeviceCapability {
 
         private val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
 
-        val totalRamMb: Long = runCatching {
-            (am?.memoryInfo?.totalMem ?: 0L) / (1024 * 1024)
-        }.getOrDefault(0L)
+        /** ActivityManager fills a caller-supplied struct; there is no getter. */
+        private val info: ActivityManager.MemoryInfo = runCatching {
+            ActivityManager.MemoryInfo().also { am?.getMemoryInfo(it) }
+        }.getOrDefault(ActivityManager.MemoryInfo())
 
-        val availableMb: Long = runCatching {
-            (am?.memoryInfo?.availMem ?: 0L) / (1024 * 1024)
-        }.getOrDefault(0L)
+        val totalRamMb: Long = info.totalMem / (1024 * 1024)
+
+        val availableMb: Long = info.availMem / (1024 * 1024)
 
         val isLowRamDevice: Boolean = runCatching { am?.isLowRamDevice == true }.getOrDefault(false)
 
