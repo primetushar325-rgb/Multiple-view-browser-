@@ -3,6 +3,8 @@ package com.example.multiview
 import android.app.DownloadManager
 import android.content.BroadcastReceiver
 import android.content.ActivityNotFoundException
+import android.widget.TextView
+import com.google.android.material.button.MaterialButton
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -29,6 +31,14 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import android.view.LayoutInflater
+import android.view.ViewGroup
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.chip.Chip
+import com.google.android.material.chip.ChipGroup
+import com.google.android.material.textfield.TextInputEditText
+import com.example.multiview.data.HistoryEntry
 import com.example.multiview.appContainer
 import com.example.multiview.browser.PaneHost
 import com.example.multiview.data.PanesSnapshot
@@ -60,6 +70,12 @@ class MainActivity : AppCompatActivity(), PaneHost {
     private val settings get() = appContainer.settings
     private val panesRepo get() = appContainer.panes
     private val blocklistRepo get() = appContainer.blocklist
+    private val historyRepo get() = appContainer.history
+
+    private enum class Screen { HOME, GRID, HISTORY, BLOGS, GAME }
+    private var currentScreen: Screen = Screen.HOME
+    private var selectedScreens: Int = 2
+    private var historyAdapter: HistoryAdapter? = null
 
     @Volatile private var adblockOn: Boolean = true
     @Volatile private var currentAdblockMode: com.example.multiview.utils.AdblockMode =
@@ -101,6 +117,10 @@ class MainActivity : AppCompatActivity(), PaneHost {
         applySettings()
         bootstrapPanes()
         handleIncomingIntent(intent)
+        setupHome()
+        setupHistory()
+        setupBottomNav()
+        showScreen(Screen.HOME)
     }
 
     // ------------------------------------------------------------------ setup
@@ -435,6 +455,130 @@ class MainActivity : AppCompatActivity(), PaneHost {
         }
     }
 
+    // -------------------------------------------------------------- screens
+
+    private fun showScreen(screen: Screen) {
+        currentScreen = screen
+        b.paneGrid.visibility = if (screen == Screen.GRID) View.VISIBLE else View.GONE
+        b.homeScreen.visibility = if (screen == Screen.HOME) View.VISIBLE else View.GONE
+        b.historyScreen.visibility = if (screen == Screen.HISTORY) View.VISIBLE else View.GONE
+        b.blogsScreen.visibility = if (screen == Screen.BLOGS) View.VISIBLE else View.GONE
+        b.gameScreen.visibility = if (screen == Screen.GAME) View.VISIBLE else View.GONE
+        if (screen == Screen.HOME) updateResumeButton()
+    }
+
+    private fun updateResumeButton() {
+        val btn = b.homeScreen.findViewById<MaterialButton>(R.id.btnResumeScreens)
+        val n = paneManager.panes.size
+        if (n > 0) {
+            btn.visibility = View.VISIBLE
+            btn.text = getString(R.string.home_resume, n)
+            btn.setOnClickListener { showScreen(Screen.GRID) }
+        } else {
+            btn.visibility = View.GONE
+        }
+    }
+
+    private fun setupHome() {
+        val home = b.homeScreen
+        home.findViewById<MaterialButton>(R.id.btnHomePaste).setOnClickListener {
+            val cm = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+            val t = cm?.primaryClip?.getItemAt(0)?.text?.toString().orEmpty().trim()
+            if (t.isNotEmpty()) home.findViewById<TextInputEditText>(R.id.etHomeUrl).setText(t)
+        }
+        val chips = home.findViewById<ChipGroup>(R.id.chipHomeScreens)
+        val counts = listOf(2, 3, 4, 6, 8, 10, 15, 18, 21)
+        counts.forEach { n ->
+            val chip = Chip(this).apply {
+                id = View.generateViewId()
+                text = n.toString()
+                isCheckable = true
+                // Chips above the device cap are unreachable; disable, don't lie.
+                isEnabled = n <= paneManager.paneCap
+                alpha = if (isEnabled) 1f else 0.4f
+            }
+            chips.addView(chip)
+        }
+        (chips.getChildAt(0) as? Chip)?.isChecked = true
+        selectedScreens = counts.first()
+        val caption = home.findViewById<TextView>(R.id.tvSelectedScreen)
+        caption.text = getString(R.string.home_selected_screen, selectedScreens)
+        chips.setOnCheckedStateChangeListener { g, ids ->
+            val picked = (0 until g.childCount)
+                .map { g.getChildAt(it) as Chip }
+                .firstOrNull { it.id == ids.firstOrNull() }
+            selectedScreens = picked?.text?.toString()?.toIntOrNull() ?: selectedScreens
+            caption.text = getString(R.string.home_selected_screen, selectedScreens)
+        }
+        home.findViewById<MaterialButton>(R.id.btnHomeOpen).setOnClickListener {
+            val typed = home.findViewById<TextInputEditText>(R.id.etHomeUrl).text?.toString()?.trim().orEmpty()
+            val url = if (typed.isEmpty()) "" else UrlUtils.normalize(typed)
+            val mode = if (paneManager.defaultIsolate) ProfileMode.ISOLATED else ProfileMode.SHARED
+            openHomeScreens(url, selectedScreens, mode)
+            showScreen(Screen.GRID)
+        }
+    }
+
+    private fun setupHistory() {
+        val screen = b.historyScreen
+        val rv = screen.findViewById<RecyclerView>(R.id.rvHistory)
+        rv.layoutManager = LinearLayoutManager(this)
+        historyAdapter = HistoryAdapter { entry ->
+            val pane = paneManager.focusedPane() ?: paneManager.panes.firstOrNull()
+            pane?.webView?.loadUrl(entry.url)
+            showScreen(Screen.GRID)
+        }
+        rv.adapter = historyAdapter
+        lifecycleScope.launch {
+            historyRepo.entries.collect { list ->
+                historyAdapter?.submit(list)
+                screen.findViewById<TextView>(R.id.tvHistoryEmpty).visibility =
+                    if (list.isEmpty()) View.VISIBLE else View.GONE
+            }
+        }
+    }
+
+    private fun setupBottomNav() {
+        b.bottomNav.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_home -> showScreen(Screen.HOME)
+                R.id.nav_history -> showScreen(Screen.HISTORY)
+                R.id.nav_blogs -> showScreen(Screen.BLOGS)
+                R.id.nav_game -> showScreen(Screen.GAME)
+                R.id.nav_settings -> {
+                    startActivity(Intent(this, SettingsActivity::class.java))
+                    return@setOnItemSelectedListener false
+                }
+            }
+            true
+        }
+    }
+
+    private class HistoryAdapter(
+        private val onClick: (HistoryEntry) -> Unit,
+    ) : RecyclerView.Adapter<HistoryAdapter.VH>() {
+        private val items = mutableListOf<HistoryEntry>()
+        private val fmt = java.text.SimpleDateFormat("MMM d, HH:mm", java.util.Locale.getDefault())
+        fun submit(list: List<HistoryEntry>) {
+            items.clear(); items.addAll(list); notifyDataSetChanged()
+        }
+        class VH(v: View) : RecyclerView.ViewHolder(v) {
+            val title: TextView = v.findViewById(R.id.tvHistoryTitle)
+            val url: TextView = v.findViewById(R.id.tvHistoryUrl)
+            val time: TextView = v.findViewById(R.id.tvHistoryTime)
+        }
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH =
+            VH(LayoutInflater.from(parent.context).inflate(R.layout.item_history, parent, false))
+        override fun getItemCount(): Int = items.size
+        override fun onBindViewHolder(h: VH, pos: Int) {
+            val e = items[pos]
+            h.title.text = e.title.ifEmpty { com.example.multiview.utils.UrlUtils.hostOf(e.url) }
+            h.url.text = e.url
+            h.time.text = fmt.format(java.util.Date(e.timestamp))
+            h.itemView.setOnClickListener { onClick(e) }
+        }
+    }
+
     // -------------------------------------------------------------- PaneHost
 
     override fun onPageStarted(paneIndex: Int) {
@@ -450,6 +594,7 @@ class MainActivity : AppCompatActivity(), PaneHost {
         }
         b.progress.visibility = View.GONE
         persistPanes()
+        lifecycleScope.launch { historyRepo.record(url, title.orEmpty()) }
     }
 
     override fun onPageError(paneIndex: Int, messageRes: Int, url: String) {
