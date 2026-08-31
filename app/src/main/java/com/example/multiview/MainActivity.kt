@@ -166,7 +166,7 @@ class MainActivity : AppCompatActivity(), PaneHost {
                 paneManager.addPane()
             }
             applyLayoutFromSettings()
-            if (paneManager.paneCap == PaneManager.LOW_RAM_CAP) {
+            if (paneManager.isCappedByHardware) {
                 Snackbar.make(b.root, getString(R.string.msg_low_ram, paneManager.paneCap),
                     Snackbar.LENGTH_LONG).show()
             }

@@ -54,13 +54,19 @@ class LayoutResolverTest {
         assertEquals(listOf(Cell(1, 0), Cell(1, 1)), a.cells.drop(1))
     }
 
-    @Test fun grid3x3CapsAtEightPanes() {
-        val a = LayoutResolver.resolve(8, "3x3")
+    @Test fun grid3x3NowShowsNine() {
+        val a = LayoutResolver.resolve(9, "3x3")
         assertEquals(3, a.rows)
         assertEquals(3, a.cols)
-        assertEquals(8, a.cells.size)
-        // The ninth slot stays empty rather than breaking the global cap.
-        assertEquals(8, LayoutResolver.MAX_PANES)
+        assertEquals(9, a.cells.size)
+    }
+
+    @Test fun grid3x4ShowsTwelve() {
+        val a = LayoutResolver.resolve(12, "3x4")
+        assertEquals(3, a.rows)
+        assertEquals(4, a.cols)
+        assertEquals(12, a.cells.size)
+        assertEquals(12, LayoutResolver.MAX_PANES)
     }
 
     @Test fun smallerPaneCountsTruncateTheLayout() {
@@ -99,7 +105,11 @@ class LayoutResolverTest {
         assertEquals(3, LayoutResolver.capacity("1x3"))
         assertEquals(4, LayoutResolver.capacity("2x2"))
         assertEquals(3, LayoutResolver.capacity("1t2b"))
-        assertEquals(8, LayoutResolver.capacity("3x3"))
+        assertEquals(6, LayoutResolver.capacity("2x3"))
+        assertEquals(6, LayoutResolver.capacity("3x2"))
+        assertEquals(8, LayoutResolver.capacity("2x4"))
+        assertEquals(9, LayoutResolver.capacity("3x3"))
+        assertEquals(12, LayoutResolver.capacity("3x4"))
     }
 
     @Test fun everyAdvertisedLayoutResolves() {

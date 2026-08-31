@@ -1,6 +1,5 @@
 package com.example.multiview.panes
 
-import android.app.ActivityManager
 import android.content.Context
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -49,11 +48,22 @@ class PaneManager(
      */
     var performanceMode: PerformanceMode = PerformanceMode.FAST
 
-    /** Low-RAM devices get a smaller cap (P16). */
-    val paneCap: Int = run {
-        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
-        if (am?.isLowRamDevice == true) LOW_RAM_CAP else LayoutResolver.MAX_PANES
-    }
+    /**
+     * Pane ceiling for THIS device, derived from physical RAM rather than a
+     * fixed number: a 2 GB phone is capped at 4 panes, a flagship at 12.
+     */
+    private val capability = DeviceCapability.Probe(context)
+
+    val paneCap: Int = capability.paneCap()
+
+    /**
+     * True when this device's RAM forced the ceiling below what the grid can
+     * draw. Drives the one-time "your phone is limited to N screens" notice.
+     */
+    val isCappedByHardware: Boolean get() = paneCap < LayoutResolver.MAX_PANES
+
+    /** Total physical RAM in MB, for display in Settings. */
+    val totalRamMb: Long get() = capability.totalRamMb
 
     var onPanesChanged: (() -> Unit)? = null
     var onLimitReached: ((Int) -> Unit)? = null
@@ -64,6 +74,12 @@ class PaneManager(
 
     /** Fired when the user goes past the recommended number of isolated panes. */
     var onTooManyIsolated: (() -> Unit)? = null
+
+    /**
+     * Fired when free memory is low enough that the next pane may cost the user
+     * an existing one. The caller decides how to present it.
+     */
+    var onMemoryPressure: (() -> Unit)? = null
 
     /**
      * Fired once for every newly created pane so callers can wire the parts
@@ -137,6 +153,7 @@ class PaneManager(
             onLimitReached?.invoke(paneCap)
             return null
         }
+        if (capability.underPressure()) onMemoryPressure?.invoke()
         val index = panes.size
         val wanted = mode ?: if (defaultIsolate) ProfileMode.ISOLATED else ProfileMode.SHARED
         val pane = createPane(index, identity, wanted)
@@ -362,8 +379,6 @@ class PaneManager(
     }
 
     companion object {
-        const val LOW_RAM_CAP = 4
-
         /** Each isolated profile is its own browser instance; warn from the 5th. */
         const val ISOLATED_WARN_AT = 5
     }

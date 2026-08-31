@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">MultiView</string>
+    <string name="app_name">VIEWPRO MAX</string>
 
     <!-- Pane header -->
     <string name="pane_reload">Reload</string>
@@ -88,7 +88,7 @@
     <string name="set_clear_cache">Cached files</string>
     <string name="set_clear_history">History</string>
     <string name="set_clear_now">Clear</string>
-    <string name="set_about_body">MultiView %1$s\nMIT licensed, free and open source.\nNo accounts, no API keys, no tracking.</string>
+    <string name="set_about_body">VIEWPRO MAX %1$s\nA multi-screen browser: up to 12 live sites, each optionally in its own isolated profile so several accounts stay signed in at once.\nMIT licensed, free and open source. No API keys, no tracking, no hidden account data.</string>
 
     <!-- Permissions -->
     <string name="perm_camera_title">Camera access</string>
