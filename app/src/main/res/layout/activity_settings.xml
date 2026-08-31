@@ -63,6 +63,21 @@
             android:textAppearance="?attr/textAppearanceBodySmall" />
 
         <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/swAggressive"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp"
+            android:text="@string/set_adblock_aggressive" />
+
+        <TextView
+            android:id="@+id/tvAggressiveBody"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/set_adblock_aggressive_body"
+            android:textAppearance="?attr/textAppearanceBodySmall" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/swForceDark"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

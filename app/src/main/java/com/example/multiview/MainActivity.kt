@@ -60,6 +60,8 @@ class MainActivity : AppCompatActivity(), PaneHost {
     private val blocklistRepo get() = appContainer.blocklist
 
     @Volatile private var adblockOn: Boolean = true
+    @Volatile private var currentAdblockMode: com.example.multiview.utils.AdblockMode =
+        com.example.multiview.utils.AdblockMode.NORMAL
     private var pendingFileCallback: ValueCallback<Array<Uri>>? = null
     private var pendingCameraFile: File? = null
     private var fullscreenCallback: WebChromeClient.CustomViewCallback? = null
@@ -127,6 +129,9 @@ class MainActivity : AppCompatActivity(), PaneHost {
             }
             refreshBadges()
         }
+        paneManager.onPaneCreated = { pane ->
+            pane.onOpenExternal = { url -> openExternal(url) }
+        }
         paneManager.onTooManyIsolated = {
             Snackbar.make(b.root, R.string.msg_isolated_many, Snackbar.LENGTH_LONG).show()
         }
@@ -186,10 +191,11 @@ class MainActivity : AppCompatActivity(), PaneHost {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 combine(settings.adblockEnabled, settings.textZoom, settings.forceDark,
-                    settings.isolateDefault) { ad, zoom, dark, isolate ->
-                    arrayOf<Any>(ad, zoom, dark, isolate)
+                    settings.isolateDefault, settings.adblockMode) { ad, zoom, dark, isolate, mode ->
+                    arrayOf<Any>(ad, zoom, dark, isolate, mode)
                 }.collect { v ->
                     adblockOn = v[0] as Boolean
+                    currentAdblockMode = com.example.multiview.utils.BlockingPolicy.fromName(v[4] as String)
                     paneManager.defaultIsolate = v[3] as Boolean
                     paneManager.applyTextZoom(v[1] as Int)
                     paneManager.panes.forEach { it.applyForceDark(v[2] as Boolean) }
@@ -359,12 +365,21 @@ class MainActivity : AppCompatActivity(), PaneHost {
 
     override fun onPageStarted(paneIndex: Int) {
         b.progress.visibility = View.VISIBLE
+        // Native overlay instead of a black rectangle while the page starts.
+        paneManager.panes.getOrNull(paneIndex)?.showLoading()
     }
 
     override fun onPageFinished(paneIndex: Int, url: String, title: String?) {
-        paneManager.panes.getOrNull(paneIndex)?.updateHeader(url, title)
+        paneManager.panes.getOrNull(paneIndex)?.apply {
+            updateHeader(url, title)
+            hideState()
+        }
         b.progress.visibility = View.GONE
         persistPanes()
+    }
+
+    override fun onPageError(paneIndex: Int, messageRes: Int, url: String) {
+        paneManager.panes.getOrNull(paneIndex)?.showError(messageRes, url)
     }
 
     override fun onProgress(paneIndex: Int, progress: Int) {
@@ -385,6 +400,8 @@ class MainActivity : AppCompatActivity(), PaneHost {
     }
 
     override fun shouldBlockRequests(): Boolean = adblockOn
+
+    override fun adblockMode(): com.example.multiview.utils.AdblockMode = currentAdblockMode
 
     override fun hostMatcher(): HostMatcher = blocklistRepo.matcher()
 

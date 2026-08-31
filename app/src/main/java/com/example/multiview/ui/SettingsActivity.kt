@@ -48,6 +48,8 @@ class SettingsActivity : AppCompatActivity() {
             io { repo.setRestorePanes(v) } }
         b.swAdblock.setOnCheckedChangeListener { _, v -> if (updatingUi) return@setOnCheckedChangeListener
             io { repo.setAdblock(v) } }
+        b.swAggressive.setOnCheckedChangeListener { _, v -> if (updatingUi) return@setOnCheckedChangeListener
+            io { repo.setAdblockMode(if (v) "aggressive" else "normal") } }
         b.swForceDark.setOnCheckedChangeListener { _, v -> if (updatingUi) return@setOnCheckedChangeListener
             io { repo.setForceDark(v) } }
         b.swIsolateDefault.setOnCheckedChangeListener { _, v -> if (updatingUi) return@setOnCheckedChangeListener
@@ -80,6 +82,9 @@ class SettingsActivity : AppCompatActivity() {
                         b.tvBlockedCount.text =
                             getString(R.string.set_adblock_blocked, blocklist.blockedCount)
                     }
+                }
+                launch {
+                    repo.adblockMode.collect { b.swAggressive.setSilently(it.equals("aggressive", true)) }
                 }
                 launch { repo.forceDark.collect { b.swForceDark.setSilently(it) } }
                 launch { repo.isolateDefault.collect { b.swIsolateDefault.setSilently(it) } }

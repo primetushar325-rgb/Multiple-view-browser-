@@ -79,6 +79,8 @@
     <string name="set_default_layout">Default layout</string>
     <string name="set_restore_panes">Restore panes on start</string>
     <string name="set_adblock">Ad &amp; tracker blocker</string>
+    <string name="set_adblock_aggressive">Aggressive ad blocking</string>
+    <string name="set_adblock_aggressive_body">Normal blocks only ad and tracker subresources, so pages, streams and logins keep working. Aggressive also blocks whole pages on ad and tracker domains - stronger, but it can break sites that mix content and ads.</string>
     <string name="set_adblock_blocked">%1$d requests blocked</string>
     <string name="set_force_dark">Force dark web content</string>
     <string name="set_text_zoom">Text zoom: %1$d%%</string>

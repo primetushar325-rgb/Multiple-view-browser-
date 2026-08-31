@@ -21,7 +21,10 @@ interface PaneHost {
     fun onRequestExternal(url: String)
     fun onBlockedRequest()
     fun onRenderProcessGone(paneIndex: Int)
+    /** Main-frame load failed: (message resource, url) for the native overlay. */
+    fun onPageError(paneIndex: Int, messageRes: Int, url: String)
     fun shouldBlockRequests(): Boolean
+    fun adblockMode(): com.example.multiview.utils.AdblockMode
     fun hostMatcher(): HostMatcher
     fun onFocusPane(paneIndex: Int)
 
@@ -60,7 +63,14 @@ class PaneWebViewClient(
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
         if (!host.shouldBlockRequests()) return null
         val url = request.url?.toString() ?: return null
+        val scheme = request.url?.scheme.orEmpty().lowercase()
+        val accept = request.requestHeaders?.get("Accept").orEmpty()
+        // WebSocket / SSE / streaming transports are never intercepted.
+        if (com.example.multiview.utils.BlockingPolicy.isProtected(scheme, accept)) return null
         if (!host.hostMatcher().isBlockedUrl(url)) return null
+        if (!com.example.multiview.utils.BlockingPolicy.shouldBlock(
+                host.adblockMode(), matched = true,
+                isMainFrame = request.isForMainFrame, protected = false)) return null
         host.onBlockedRequest()
         return emptyResponse()
     }
@@ -78,29 +88,38 @@ class PaneWebViewClient(
         request: WebResourceRequest,
         error: WebResourceError,
     ) {
-        // Only the main frame gets the branded page; subresource failures are
+        // Only the main frame gets the failure overlay; subresource errors are
         // ignored so a missing ad script never blanks a working page.
-        if (request.isForMainFrame) {
-            val ctx = view.context
-            view.loadDataWithBaseURL(
-                request.url?.toString(),
-                ErrorPage.html(
-                    url = request.url?.toString() ?: "",
-                    title = ctx.getString(com.example.multiview.R.string.err_title),
-                    retry = ctx.getString(com.example.multiview.R.string.err_retry),
-                    offline = ctx.getString(com.example.multiview.R.string.msg_offline),
-                    offlineNow = !com.example.multiview.utils.NetUtils.isOnline(ctx),
-                ),
-                "text/html",
-                "utf-8",
-                null,
-            )
+        if (!request.isForMainFrame) return
+        val url = request.url?.toString().orEmpty()
+        host.onPageError(paneIndex(), messageFor(view, error.errorCode), url)
+    }
+
+    /** Maps a main-frame failure to the most honest one-line reason. */
+    @androidx.annotation.SuppressLint("deprecation") // errorCode is deprecated but the only signal on minSdk 24
+    private fun messageFor(view: WebView, code: Int): Int {
+        val online = com.example.multiview.utils.NetUtils.isOnline(view.context)
+        return when (code) {
+            WebViewClient.ERROR_HOST_LOOKUP ->
+                if (online) com.example.multiview.R.string.err_dns
+                else com.example.multiview.R.string.err_no_internet
+            WebViewClient.ERROR_TIMEOUT -> com.example.multiview.R.string.err_timeout
+            WebViewClient.ERROR_FAILED_SSL_HANDSHAKE -> com.example.multiview.R.string.err_ssl
+            WebViewClient.ERROR_CONNECT, WebViewClient.ERROR_IO ->
+                if (online) com.example.multiview.R.string.err_generic
+                else com.example.multiview.R.string.err_no_internet
+            else -> com.example.multiview.R.string.err_generic
         }
     }
 
     override fun onReceivedSslError(view: WebView, handler: android.webkit.SslErrorHandler, error: android.net.http.SslError) {
-        // Never proceed past a certificate problem.
+        // Never proceed past a certificate problem; tell the pane why.
         handler.cancel()
+        host.onPageError(
+            paneIndex(),
+            com.example.multiview.R.string.err_ssl,
+            error.url ?: view.url.orEmpty(),
+        )
     }
 
     /**
@@ -120,37 +139,4 @@ class PaneWebViewClient(
         "utf-8",
         ByteArrayInputStream(ByteArray(0)),
     )
-}
-
-/** Branded inline error page with a working Retry link. */
-object ErrorPage {
-    fun html(url: String, title: String, retry: String, offline: String, offlineNow: Boolean): String {
-        fun esc(t: String) = t.replace("&", "&amp;").replace("<", "&lt;").replace("\"", "&quot;")
-        val safe = esc(url)
-        val heading = esc(title)
-        val retryLabel = esc(retry)
-        val note = if (offlineNow) "<p>${esc(offline)}</p>" else ""
-
-        return """
-            <!doctype html><html><head><meta charset="utf-8">
-            <meta name="viewport" content="width=device-width,initial-scale=1">
-            <title>MultiView</title>
-            <style>
-              body{margin:0;background:#0b0d12;color:#e8ecf4;
-                   font-family:system-ui,-apple-system,sans-serif;
-                   display:flex;min-height:100vh;align-items:center;justify-content:center}
-              .card{padding:28px;max-width:420px;text-align:center}
-              h1{font-size:18px;margin:0 0 8px}
-              p{font-size:13px;color:#9aa7bd;margin:0 0 4px;word-break:break-all}
-              a{display:inline-block;margin-top:18px;padding:10px 22px;border-radius:22px;
-                background:#4a6cf7;color:#fff;text-decoration:none;font-size:14px}
-            </style></head>
-            <body><div class="card">
-              <h1>$heading</h1>
-              <p>$safe</p>
-              $note
-              <a href="$safe">$retryLabel</a>
-            </div></body></html>
-        """.trimIndent()
-    }
 }
