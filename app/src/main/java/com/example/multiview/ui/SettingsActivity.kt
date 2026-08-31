@@ -166,7 +166,6 @@ class SettingsActivity : AppCompatActivity() {
                 if (pane.accountEmail.isNotBlank()) text = "$text\n${pane.accountEmail}"
             }
             val btn = com.google.android.material.button.MaterialButton(this).apply {
-                style = com.google.android.material.R.style.Widget_Material3_Button_TonalButton
                 setText(R.string.set_add_google)
                 isEnabled = supported
                 setOnClickListener {

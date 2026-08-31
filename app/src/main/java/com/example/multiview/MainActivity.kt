@@ -5,6 +5,8 @@ import android.content.BroadcastReceiver
 import android.content.ActivityNotFoundException
 import android.widget.TextView
 import com.google.android.material.button.MaterialButton
+import android.content.ClipboardManager
+import com.example.multiview.panes.PaneRegistry
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -460,15 +462,15 @@ class MainActivity : AppCompatActivity(), PaneHost {
     private fun showScreen(screen: Screen) {
         currentScreen = screen
         b.paneGrid.visibility = if (screen == Screen.GRID) View.VISIBLE else View.GONE
-        b.homeScreen.visibility = if (screen == Screen.HOME) View.VISIBLE else View.GONE
-        b.historyScreen.visibility = if (screen == Screen.HISTORY) View.VISIBLE else View.GONE
-        b.blogsScreen.visibility = if (screen == Screen.BLOGS) View.VISIBLE else View.GONE
-        b.gameScreen.visibility = if (screen == Screen.GAME) View.VISIBLE else View.GONE
+        b.homeScreen.root.visibility = if (screen == Screen.HOME) View.VISIBLE else View.GONE
+        b.historyScreen.root.visibility = if (screen == Screen.HISTORY) View.VISIBLE else View.GONE
+        b.blogsScreen.root.visibility = if (screen == Screen.BLOGS) View.VISIBLE else View.GONE
+        b.gameScreen.root.visibility = if (screen == Screen.GAME) View.VISIBLE else View.GONE
         if (screen == Screen.HOME) updateResumeButton()
     }
 
     private fun updateResumeButton() {
-        val btn = b.homeScreen.findViewById<MaterialButton>(R.id.btnResumeScreens)
+        val btn = b.homeScreen.root.findViewById<MaterialButton>(R.id.btnResumeScreens)
         val n = paneManager.panes.size
         if (n > 0) {
             btn.visibility = View.VISIBLE
@@ -480,7 +482,7 @@ class MainActivity : AppCompatActivity(), PaneHost {
     }
 
     private fun setupHome() {
-        val home = b.homeScreen
+        val home = b.homeScreen.root
         home.findViewById<MaterialButton>(R.id.btnHomePaste).setOnClickListener {
             val cm = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
             val t = cm?.primaryClip?.getItemAt(0)?.text?.toString().orEmpty().trim()
@@ -520,7 +522,7 @@ class MainActivity : AppCompatActivity(), PaneHost {
     }
 
     private fun setupHistory() {
-        val screen = b.historyScreen
+        val screen = b.historyScreen.root
         val rv = screen.findViewById<RecyclerView>(R.id.rvHistory)
         rv.layoutManager = LinearLayoutManager(this)
         historyAdapter = HistoryAdapter { entry ->
