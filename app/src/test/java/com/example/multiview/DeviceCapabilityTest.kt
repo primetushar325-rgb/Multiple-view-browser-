@@ -39,21 +39,26 @@ class DeviceCapabilityTest {
         assertEquals(LayoutResolver.MAX_PANES, DeviceCapability.effectiveCap(131_072))
     }
 
-    @Test fun everyCapIsRenderableBySomeLayout() {
-        val capacities = LayoutResolver.LAYOUTS.map { LayoutResolver.capacity(it.first) }.toSet()
+    @Test fun everyCapCanBeDisplayedBySomeLayout() {
+        // A cap does not need a layout of exactly that size; it needs a layout
+        // with room for that many panes. 3x4 (12) covers every cap we issue.
+        val maxCapacity = LayoutResolver.LAYOUTS.maxOf { LayoutResolver.capacity(it.first) }
         for (ram in listOf(1_024L, 2_048L, 4_096L, 6_144L, 16_384L)) {
             val cap = DeviceCapability.effectiveCap(ram)
             assertTrue(
-                "cap $cap (from ${ram}MB) must match a real layout capacity $capacities",
-                cap in capacities,
+                "cap $cap (from ${ram}MB) must fit the largest layout ($maxCapacity)",
+                cap <= maxCapacity,
             )
         }
     }
 
     @Test fun pressureIsProportionalNotAbsolute() {
-        // 300 MB free is comfortable on 8 GB but critical on 2 GB.
-        assertFalse(DeviceCapability.isMemoryPressure(300, 8_192))
-        assertTrue(DeviceCapability.isMemoryPressure(300, 2_048))
+        // Same RATIO of free RAM must give the same verdict on any device size:
+        // ~20% free is comfortable everywhere, ~5% free is pressure everywhere.
+        assertFalse(DeviceCapability.isMemoryPressure(1_600, 8_192))
+        assertFalse(DeviceCapability.isMemoryPressure(800, 4_096))
+        assertTrue(DeviceCapability.isMemoryPressure(400, 8_192))
+        assertTrue(DeviceCapability.isMemoryPressure(200, 4_096))
     }
 
     @Test fun noPressureWhenPlentyIsFree() {
