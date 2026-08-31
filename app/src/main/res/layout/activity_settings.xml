@@ -109,7 +109,21 @@
             android:paddingBottom="12dp"
             android:text="@string/set_isolate_default" />
 
-                <TextView
+                        <TextView
+            android:id="@+id/tvPaneAccountsTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="16dp"
+            android:text="@string/set_pane_accounts"
+            android:textAppearance="?attr/textAppearanceTitleSmall" />
+
+        <LinearLayout
+            android:id="@+id/paneAccountsBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+<TextView
             android:id="@+id/tvAccountsTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

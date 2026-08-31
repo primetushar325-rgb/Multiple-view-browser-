@@ -247,6 +247,26 @@ class PaneManager(
         return replacement
     }
 
+    /**
+     * Makes sure [identity] is isolated, then opens the Google sign-in page in
+     * that pane so the user can add an account that stays bound to it.
+     *
+     * Reuses the existing isolate-toggle path rather than inventing a second
+     * one; when the pane is rebuilt the replacement is found by identity.
+     */
+    fun addGoogleAccount(identity: PaneIdentity) {
+        val pane = panes.firstOrNull { it.identity == identity } ?: return
+        if (pane.profileMode != ProfileMode.ISOLATED) {
+            if (!IsolatedProfileFactory.isSupported()) {
+                onProfileUnsupported?.invoke()
+                return
+            }
+            toggleProfile(pane)
+        }
+        panes.firstOrNull { it.identity == identity }
+            ?.webView?.loadUrl(GOOGLE_ACCOUNTS_URL)
+    }
+
     /** Closing a pane shifts the survivors down; keep their index truthful. */
     private fun reindex(pane: PaneView, newIndex: Int) {
         pane.index = newIndex
@@ -380,6 +400,7 @@ class PaneManager(
     companion object {
         /** A pane is never left empty; this is the neutral default page. */
         const val DEFAULT_URL = "https://www.google.com"
+        const val GOOGLE_ACCOUNTS_URL = "https://accounts.google.com"
 
         /** Each isolated profile is its own browser instance; warn from the 5th. */
         const val ISOLATED_WARN_AT = 5

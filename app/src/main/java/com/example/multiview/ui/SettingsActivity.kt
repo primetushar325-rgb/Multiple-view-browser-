@@ -17,6 +17,7 @@ import com.example.multiview.R
 import com.example.multiview.appContainer
 import com.example.multiview.databinding.ActivitySettingsBinding
 import com.example.multiview.panes.IsolatedProfileFactory
+import com.example.multiview.panes.PaneRegistry
 import com.example.multiview.panes.LayoutResolver
 import com.google.android.material.slider.Slider
 import kotlinx.coroutines.flow.firstOrNull
@@ -67,6 +68,7 @@ class SettingsActivity : AppCompatActivity() {
         b.btnClearData.setOnClickListener { confirmClear() }
 
         renderAccounts()
+        renderPaneAccounts()
 
         b.tvAbout.text = getString(R.string.set_about_body, BuildConfig.VERSION_NAME)
 
@@ -136,6 +138,49 @@ class SettingsActivity : AppCompatActivity() {
                     }
                 b.accountsBox.addView(row)
             }
+        }
+    }
+
+    /**
+     * Lists every currently OPEN pane (Pane 1, Pane 2, ...) with its profile
+     * mode and an "Add Google Account" action, wired to the same isolate +
+     * sign-in path used in the grid. When multi-profile is unsupported the
+     * button is disabled and the existing unsupported string is shown.
+     */
+    private fun renderPaneAccounts() {
+        val mgr = PaneRegistry.manager
+        b.paneAccountsBox.removeAllViews()
+        val panes = mgr?.panes.orEmpty()
+        b.tvPaneAccountsTitle.visibility = if (panes.isEmpty()) android.view.View.GONE else android.view.View.VISIBLE
+        val supported = IsolatedProfileFactory.isSupported()
+        panes.forEachIndexed { i, pane ->
+            val row = android.widget.LinearLayout(this).apply {
+                orientation = android.widget.LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                setPadding(0, 8, 0, 8)
+            }
+            val label = android.widget.TextView(this).apply {
+                layoutParams = android.widget.LinearLayout.LayoutParams(0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                val modeStr = getString(if (pane.isolatedInEffect) R.string.mode_isolated else R.string.mode_shared)
+                text = getString(R.string.pane_account_title, i + 1) + "  \u00b7  " + modeStr
+                if (pane.accountEmail.isNotBlank()) text = "$text\n${pane.accountEmail}"
+            }
+            val btn = com.google.android.material.button.MaterialButton(this).apply {
+                style = com.google.android.material.R.style.Widget_Material3_Button_TonalButton
+                setText(R.string.set_add_google)
+                isEnabled = supported
+                setOnClickListener {
+                    mgr?.addGoogleAccount(pane.identity)
+                    renderPaneAccounts()
+                }
+            }
+            row.addView(label); row.addView(btn)
+            b.paneAccountsBox.addView(row)
+        }
+        if (!supported && panes.isNotEmpty()) {
+            b.paneAccountsBox.addView(android.widget.TextView(this).apply {
+                setText(R.string.msg_profile_unsupported)
+            })
         }
     }
 

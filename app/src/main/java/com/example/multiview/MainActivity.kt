@@ -93,6 +93,7 @@ class MainActivity : AppCompatActivity(), PaneHost {
         setSupportActionBar(b.toolbar)
 
         paneManager = PaneManager(this, b.paneGrid, this)
+        PaneRegistry.manager = paneManager
         wirePaneManager()
         setupToolbar()
         setupBackHandling()
@@ -136,6 +137,7 @@ class MainActivity : AppCompatActivity(), PaneHost {
             pane.onIconClick = { p ->
                 SitePickerSheet(this) { url -> loadInPane(p, url) }.show()
             }
+            pane.onProfileClick = { showPaneAccountDialog(it) }
         }
         paneManager.onTooManyIsolated = {
             Snackbar.make(b.root, R.string.msg_isolated_many, Snackbar.LENGTH_LONG).show()
@@ -301,6 +303,43 @@ class MainActivity : AppCompatActivity(), PaneHost {
      * the device cap is hit part-way, the remaining requests are skipped and
      * the existing limit notice explains why.
      */
+    /**
+     * The person icon on a pane opens the account flow scoped to that one
+     * pane: current mode, an "Add Google Account" action (isolate + sign-in),
+     * and logout when an account is present. Nothing else is disturbed.
+     */
+    private fun showPaneAccountDialog(pane: PaneView) {
+        val supported = com.example.multiview.panes.IsolatedProfileFactory.isSupported()
+        val mode = if (pane.isolatedInEffect) R.string.mode_isolated else R.string.mode_shared
+        val builder = android.app.AlertDialog.Builder(this)
+            .setTitle(getString(R.string.pane_account_title, pane.index + 1))
+            .setMessage(getString(R.string.pane_account_mode, getString(mode)))
+        if (supported) {
+            builder.setPositiveButton(R.string.set_add_google) { _, _ ->
+                paneManager.addGoogleAccount(pane.identity)
+                refreshBadges()
+            }
+        } else {
+            builder.setMessage(R.string.msg_profile_unsupported)
+        }
+        if (pane.accountEmail.isNotBlank()) {
+            builder.setNegativeButton(R.string.set_logout) { _, _ ->
+                com.example.multiview.panes.IsolatedProfileFactory.clearProfile(pane.identity.profileId)
+                pane.accountEmail = ""
+                lifecycleScope.launch {
+                    val snap = panesRepo.snapshot.firstOrNull() ?: return@launch
+                    panesRepo.save(
+                        snap.copy(panes = snap.panes.map { st ->
+                            if (st.paneId == pane.identity.paneId) st.copy(accountEmail = "") else st
+                        })
+                    )
+                }
+                refreshBadges()
+            }
+        }
+        builder.setNeutralButton(R.string.dialog_cancel, null).show()
+    }
+
     private fun openHomeScreens(url: String, count: Int, mode: ProfileMode) {
         val tv = android.widget.TextView(this).apply {
             setPadding(64, 56, 64, 24)
@@ -660,6 +699,7 @@ class MainActivity : AppCompatActivity(), PaneHost {
 
     override fun onDestroy() {
         runCatching { unregisterReceiver(downloadReceiver) }
+        PaneRegistry.manager = null
         paneManager.destroyAll()
         super.onDestroy()
     }
