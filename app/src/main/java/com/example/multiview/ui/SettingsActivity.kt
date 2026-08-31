@@ -155,7 +155,7 @@ class SettingsActivity : AppCompatActivity() {
         b.btnAddAccount.isEnabled = IsolatedProfileFactory.isSupported()
         b.paneAccountsBox.removeAllViews()
         lifecycleScope.launch {
-            val list = runCatching { accountsRepo.accounts.firstOrNull() }.getOrDefault(emptyList())
+            val list = runCatching { accountsRepo.accounts.firstOrNull() }.getOrNull().orEmpty()
             b.paneAccountsBox.removeAllViews()
             if (list.isEmpty()) {
                 b.paneAccountsBox.addView(android.widget.TextView(this@SettingsActivity).apply {
