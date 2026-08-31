@@ -1,12 +1,13 @@
 package com.example.multiview.di
 
 import android.content.Context
+import com.example.multiview.data.AccountsRepo
 import com.example.multiview.data.BlocklistRepo
 import com.example.multiview.data.HistoryRepo
 import com.example.multiview.data.PanesRepo
 import com.example.multiview.data.SettingsRepo
 
-/** Hand-rolled DI. Three repositories, one instance each, no framework. */
+/** Hand-rolled DI. One instance of each repository, no framework. */
 class AppContainer(context: Context) {
     private val appContext = context.applicationContext
 
@@ -14,4 +15,5 @@ class AppContainer(context: Context) {
     val panes: PanesRepo by lazy { PanesRepo(appContext) }
     val blocklist: BlocklistRepo by lazy { BlocklistRepo(appContext) }
     val history: HistoryRepo by lazy { HistoryRepo(appContext) }
+    val accounts: AccountsRepo by lazy { AccountsRepo(appContext) }
 }

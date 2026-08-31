@@ -131,4 +131,11 @@
     <string name="perm_allow">Allow</string>
     <string name="perm_deny">Deny</string>
     <string name="dialog_cancel">Cancel</string>
+    <string name="set_title">Settings</string>
+    <string name="set_google_accounts">Google Accounts</string>
+    <string name="set_google_accounts_empty">No saved accounts yet. Tap “Add Account” to sign one in; each saved account is then reused automatically, one per screen.</string>
+    <string name="set_add_account">Add Account</string>
+    <string name="set_remove">Remove</string>
+    <string name="set_done">Done</string>
+    <string name="account_default_label">Account %1$d</string>
 </resources>

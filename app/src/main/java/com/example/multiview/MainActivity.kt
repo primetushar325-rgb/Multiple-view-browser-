@@ -44,6 +44,7 @@ import com.example.multiview.data.HistoryEntry
 import com.example.multiview.appContainer
 import com.example.multiview.browser.PaneHost
 import com.example.multiview.data.PanesSnapshot
+import com.example.multiview.data.PaneIdentity
 import com.example.multiview.data.ProfileMode
 import com.example.multiview.databinding.ActivityMainBinding
 import com.example.multiview.panes.LayoutResolver
@@ -373,9 +374,31 @@ class MainActivity : AppCompatActivity(), PaneHost {
             .create()
         dialog.show()
         lifecycleScope.launch {
+            // Saved Google accounts, oldest first: pane 1 -> slot 1, pane 2 ->
+            // slot 2, and so on. Read from persisted state (safe from anywhere).
+            val accounts = runCatching { appContainer.accounts.current() }.getOrDefault(emptyList())
+            val supported = com.example.multiview.panes.IsolatedProfileFactory.isSupported()
+            // "Open N" means exactly N: start from a clean slate.
+            paneManager.destroyAll()
+            val target = url.ifBlank { null }
             repeat(count) { i ->
                 tv.text = getString(R.string.home_opening, i + 1, count)
-                paneManager.addPane(mode, url.ifBlank { null })
+                val account = accounts.getOrNull(i)
+                if (account != null && supported) {
+                    // This pane IS this saved account: bind it to the account's
+                    // isolated profile so the page opens already signed in and
+                    // never shares a session with another pane.
+                    val identity = PaneIdentity(
+                        paneId = java.util.UUID.randomUUID().toString(),
+                        profileId = account.slotId,
+                    )
+                    val pane = paneManager.addPane(ProfileMode.ISOLATED, target, identity)
+                    pane?.accountEmail = account.label
+                } else {
+                    // More panes than saved accounts (or multi-profile
+                    // unsupported): open shared instead of failing.
+                    paneManager.addPane(mode, target)
+                }
                 kotlinx.coroutines.delay(120)
             }
             dialog.dismiss()

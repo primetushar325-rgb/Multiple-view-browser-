@@ -46,6 +46,16 @@
             </intent-filter>
         </activity>
 
+        <!-- Settings is its own Activity; it must be declared or launching it
+             throws ActivityNotFoundException (the previous "opening Settings
+             crashes" bug). Not exported: only reachable from within the app. -->
+        <activity
+            android:name=".ui.SettingsActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|density|uiMode"
+            android:exported="false"
+            android:label="@string/set_title"
+            android:parentActivityName=".MainActivity" />
+
         <!-- Grants the camera app write access to a cache file for uploads.
              Not exported: reachable only through the URI grants above. -->
         <provider

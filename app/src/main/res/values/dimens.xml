@@ -6,4 +6,7 @@
     <dimen name="pane_button">32dp</dimen>
     <dimen name="sheet_padding">16dp</dimen>
     <dimen name="preset_icon">28dp</dimen>
+    <dimen name="pane_card_margin">10dp</dimen>
+    <dimen name="pane_card_height">320dp</dimen>
+    <dimen name="pane_card_elevation">3dp</dimen>
 </resources>

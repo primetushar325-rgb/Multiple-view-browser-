@@ -114,7 +114,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:paddingTop="16dp"
-            android:text="@string/set_pane_accounts"
+            android:text="@string/set_google_accounts"
             android:textAppearance="?attr/textAppearanceTitleSmall" />
 
         <LinearLayout
@@ -122,6 +122,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAddAccount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/set_add_account" />
 
 <TextView
             android:id="@+id/tvAccountsTitle"

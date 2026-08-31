@@ -302,13 +302,35 @@ class PaneManager(
         container.removeAllViews()
         if (panes.isEmpty()) return
 
-        val visible: List<PaneView> =
-            if (maximizedIndex >= 0) listOfNotNull(panes.getOrNull(maximizedIndex)) else panes.toList()
-        if (visible.isEmpty()) return
+        // Maximized: a single-cell grid holding just the focused pane.
+        if (maximizedIndex >= 0) {
+            val pane = panes.getOrNull(maximizedIndex) ?: return
+            renderGrid(listOf(pane), "1x1")
+            focus(maximizedIndex)
+            return
+        }
 
+        val n = panes.size
+        if (n <= GRID_MAX) {
+            // Small N stays a real on-screen tiled grid. If the user's chosen
+            // layout is too small for the panes actually open, upgrade it so no
+            // pane is ever hidden (the bug where N panes showed only one).
+            val id = if (LayoutResolver.capacity(layoutId) >= n) layoutId
+            else LayoutResolver.bestLayoutFor(n)
+            renderGrid(panes.toList(), id)
+        } else {
+            // Large N: a fixed grid is unusably small on a phone, so show a
+            // vertically scrollable stack of full-width pane cards instead.
+            renderStack(panes.toList())
+        }
+        focus(focusedIndex.coerceIn(0, n - 1))
+    }
+
+    /** Tiles [visible] into the grid described by [layoutId]. */
+    private fun renderGrid(visible: List<PaneView>, layoutId: String) {
         val arrangement = LayoutResolver.resolve(
             paneCount = visible.size.coerceIn(1, LayoutResolver.MAX_PANES),
-            layoutId = if (maximizedIndex >= 0) "1x1" else layoutId,
+            layoutId = layoutId,
         )
 
         val root = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
@@ -344,7 +366,46 @@ class PaneManager(
                 ViewGroup.LayoutParams.MATCH_PARENT,
             ),
         )
-        focus(focusedIndex.coerceIn(0, panes.size - 1))
+    }
+
+    /**
+     * Stacks [visible] as full-width cards in a vertical ScrollView, so any
+     * number of panes (up to the device cap) stays reachable by scrolling and
+     * each card reads as a distinct, clearly-labeled browser window.
+     */
+    private fun renderStack(visible: List<PaneView>) {
+        val res = context.resources
+        val margin = res.getDimensionPixelSize(com.example.multiview.R.dimen.pane_card_margin)
+        val cardHeight = res.getDimensionPixelSize(com.example.multiview.R.dimen.pane_card_height)
+
+        val column = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(margin, margin, margin, 0)
+        }
+        visible.forEach { pane ->
+            pane.detachFromParent()
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, cardHeight)
+            lp.setMargins(0, 0, 0, margin)
+            column.addView(pane, lp)
+        }
+
+        val scroll = android.widget.ScrollView(context).apply {
+            isFillViewport = false
+            addView(
+                column,
+                ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ),
+            )
+        }
+        container.addView(
+            scroll,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+            ),
+        )
     }
 
     fun snapshot(): PanesSnapshot = PanesSnapshot(
@@ -395,6 +456,10 @@ class PaneManager(
         panes.forEach { it.destroyCompletely() }
         panes.clear()
         container.removeAllViews()
+        // Reset view state so a subsequent open starts as a fresh grid/stack
+        // rather than inheriting a stale maximized/focused pane.
+        focusedIndex = 0
+        maximizedIndex = -1
     }
 
     companion object {
@@ -404,5 +469,12 @@ class PaneManager(
 
         /** Each isolated profile is its own browser instance; warn from the 5th. */
         const val ISOLATED_WARN_AT = 5
+
+        /**
+         * Up to this many panes use the tiled on-screen grid; more than this
+         * switch to the scrollable card stack (a fixed grid is too small to use
+         * on a phone beyond a handful of panes).
+         */
+        const val GRID_MAX = 4
     }
 }

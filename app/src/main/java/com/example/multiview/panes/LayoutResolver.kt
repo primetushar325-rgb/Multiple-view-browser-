@@ -97,6 +97,26 @@ object LayoutResolver {
     fun rows(layoutId: String): Int = SLOTS[layoutId]?.first ?: 1
 
     /**
+     * Smallest layout whose capacity fits [paneCount], so opening N panes never
+     * silently hides the ones past a too-small grid. Falls back to the full
+     * 3x4 grid at the ceiling. Used by the grid path when the user's chosen
+     * layout is too small for the panes that are actually open.
+     */
+    fun bestLayoutFor(paneCount: Int): String {
+        val n = paneCount.coerceIn(1, MAX_PANES)
+        return when {
+            n <= 1 -> "1x1"
+            n == 2 -> "1x2"
+            n == 3 -> "1x3"
+            n == 4 -> "2x2"
+            n <= 6 -> "2x3"
+            n <= 8 -> "2x4"
+            n <= 9 -> "3x3"
+            else -> "3x4"
+        }
+    }
+
+    /**
      * @throws IllegalArgumentException when [paneCount] is outside 1..[MAX_PANES]
      *   or the layout id is unknown.
      */

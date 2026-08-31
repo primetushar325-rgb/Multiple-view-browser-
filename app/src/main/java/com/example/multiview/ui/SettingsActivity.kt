@@ -16,8 +16,9 @@ import com.example.multiview.BuildConfig
 import com.example.multiview.R
 import com.example.multiview.appContainer
 import com.example.multiview.databinding.ActivitySettingsBinding
+import com.example.multiview.browser.WebViewFactory
+import com.example.multiview.data.AccountsRepo
 import com.example.multiview.panes.IsolatedProfileFactory
-import com.example.multiview.panes.PaneRegistry
 import com.example.multiview.panes.LayoutResolver
 import com.google.android.material.slider.Slider
 import kotlinx.coroutines.flow.firstOrNull
@@ -37,6 +38,7 @@ class SettingsActivity : AppCompatActivity() {
     private val repo get() = appContainer.settings
     private val blocklist get() = appContainer.blocklist
     private val panesRepo get() = appContainer.panes
+    private val accountsRepo get() = appContainer.accounts
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,7 +70,8 @@ class SettingsActivity : AppCompatActivity() {
         b.btnClearData.setOnClickListener { confirmClear() }
 
         renderAccounts()
-        renderPaneAccounts()
+        renderGoogleAccounts()
+        b.btnAddAccount.setOnClickListener { addGoogleAccount() }
 
         b.tvAbout.text = getString(R.string.set_about_body, BuildConfig.VERSION_NAME)
 
@@ -142,46 +145,85 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     /**
-     * Lists every currently OPEN pane (Pane 1, Pane 2, ...) with its profile
-     * mode and an "Add Google Account" action, wired to the same isolate +
-     * sign-in path used in the grid. When multi-profile is unsupported the
-     * button is disabled and the existing unsupported string is shown.
+     * The persistent Google-account pool. Reads ONLY persisted state
+     * (appContainer.accounts) - never MainActivity's live panes - so opening
+     * Settings can no longer crash, whether 0 panes are open, many are open,
+     * or it is a fresh install. Each row shows the label + slot id + Remove.
      */
-    private fun renderPaneAccounts() {
-        val mgr = PaneRegistry.manager
+    private fun renderGoogleAccounts() {
+        b.tvPaneAccountsTitle.setText(R.string.set_google_accounts)
+        b.btnAddAccount.isEnabled = IsolatedProfileFactory.isSupported()
         b.paneAccountsBox.removeAllViews()
-        val panes = mgr?.panes.orEmpty()
-        b.tvPaneAccountsTitle.visibility = if (panes.isEmpty()) android.view.View.GONE else android.view.View.VISIBLE
-        val supported = IsolatedProfileFactory.isSupported()
-        panes.forEachIndexed { i, pane ->
-            val row = android.widget.LinearLayout(this).apply {
-                orientation = android.widget.LinearLayout.HORIZONTAL
-                gravity = android.view.Gravity.CENTER_VERTICAL
-                setPadding(0, 8, 0, 8)
+        lifecycleScope.launch {
+            val list = runCatching { accountsRepo.accounts.firstOrNull() }.getOrDefault(emptyList())
+            b.paneAccountsBox.removeAllViews()
+            if (list.isEmpty()) {
+                b.paneAccountsBox.addView(android.widget.TextView(this@SettingsActivity).apply {
+                    setText(R.string.set_google_accounts_empty)
+                })
+                return@launch
             }
-            val label = android.widget.TextView(this).apply {
-                layoutParams = android.widget.LinearLayout.LayoutParams(0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                val modeStr = getString(if (pane.isolatedInEffect) R.string.mode_isolated else R.string.mode_shared)
-                text = getString(R.string.pane_account_title, i + 1) + "  \u00b7  " + modeStr
-                if (pane.accountEmail.isNotBlank()) text = "$text\n${pane.accountEmail}"
-            }
-            val btn = com.google.android.material.button.MaterialButton(this).apply {
-                setText(R.string.set_add_google)
-                isEnabled = supported
-                setOnClickListener {
-                    mgr?.addGoogleAccount(pane.identity)
-                    renderPaneAccounts()
+            list.forEach { acc ->
+                val row = layoutInflater.inflate(R.layout.item_account, b.paneAccountsBox, false)
+                row.findViewById<android.widget.TextView>(R.id.tvAccountEmail).text = acc.label
+                row.findViewById<android.widget.TextView>(R.id.tvAccountProfile).text = acc.slotId
+                row.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnLogout).apply {
+                    setText(R.string.set_remove)
+                    setOnClickListener {
+                        io {
+                            IsolatedProfileFactory.clearProfile(acc.slotId)
+                            accountsRepo.remove(acc.slotId)
+                            renderGoogleAccounts()
+                        }
+                    }
                 }
+                b.paneAccountsBox.addView(row)
             }
-            row.addView(label); row.addView(btn)
-            b.paneAccountsBox.addView(row)
-        }
-        if (!supported && panes.isNotEmpty()) {
-            b.paneAccountsBox.addView(android.widget.TextView(this).apply {
-                setText(R.string.msg_profile_unsupported)
-            })
         }
     }
+
+    /**
+     * "Add Account": mints the next slot id, opens Google sign-in inside that
+     * slot's own isolated profile in a dialog, then saves the slot. The profile
+     * persists, so the sign-in survives restarts and is reusable by panes.
+     */
+    private fun addGoogleAccount() {
+        if (!IsolatedProfileFactory.isSupported()) {
+            com.google.android.material.snackbar.Snackbar
+                .make(b.root, R.string.msg_profile_unsupported, com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+                .show()
+            return
+        }
+        lifecycleScope.launch {
+            val list = runCatching { accountsRepo.current() }.getOrDefault(emptyList())
+            val slotId = AccountsRepo.slotIdFor(AccountsRepo.nextSlotNumber(list))
+            val defaultLabel = getString(R.string.account_default_label, list.size + 1)
+            showSignInDialog(slotId, defaultLabel)
+        }
+    }
+
+    private fun showSignInDialog(slotId: String, defaultLabel: String) {
+        val web = WebViewFactory.create(this, slotId)
+        val height = (resources.displayMetrics.heightPixels * 0.7f).toInt()
+        web.layoutParams = android.widget.FrameLayout.LayoutParams(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT, height,
+        )
+        web.loadUrl(AccountsRepo.SIGN_IN_URL)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.set_add_account)
+            .setView(web)
+            .setPositiveButton(R.string.set_done) { _, _ ->
+                val label = emailFromTitle(web.title) ?: defaultLabel
+                io { accountsRepo.add(label); renderGoogleAccounts() }
+            }
+            .setNegativeButton(R.string.dialog_cancel, null)
+            .setOnDismissListener { runCatching { web.destroy() } }
+            .show()
+    }
+
+    /** Best-effort display label taken from the sign-in page's own title. */
+    private fun emailFromTitle(title: String?): String? =
+        title?.let { ACCOUNT_EMAIL_REGEX.find(it)?.value }
 
     private fun pickDefaultLayout() {
         val ids = LayoutResolver.LAYOUTS.map { it.first }.toTypedArray()
@@ -268,5 +310,10 @@ class SettingsActivity : AppCompatActivity() {
         lifecycleScope.launch { block() }
     }
 
+    companion object {
+        /** Pulls a display email out of a page title; display metadata only. */
+        private val ACCOUNT_EMAIL_REGEX =
+            Regex("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}")
+    }
 }
 

@@ -48,6 +48,7 @@ class PaneView(
 ) : LinearLayout(context) {
 
     private val badge: TextView
+    private val avatar: TextView
     private val accountLabel: TextView
     private val icon: ImageView
     private val title: TextView
@@ -97,8 +98,12 @@ class PaneView(
     init {
         orientation = VERTICAL
         LayoutInflater.from(context).inflate(R.layout.view_pane, this, true)
+        // Premium card: rounded, elevated surface (the background drawables are
+        // rounded, so the shadow follows the outline).
+        elevation = resources.getDimension(R.dimen.pane_card_elevation)
 
         badge = findViewById(R.id.paneBadge)
+        avatar = findViewById(R.id.paneAvatar)
         accountLabel = findViewById(R.id.paneAccount)
         icon = findViewById(R.id.paneIcon)
         title = findViewById(R.id.paneTitle)
@@ -202,10 +207,13 @@ class PaneView(
         }
         val email = accountEmail.trim()
         if (email.isNotEmpty()) {
+            avatar.visibility = View.VISIBLE
+            avatar.text = email.first().uppercaseChar().toString()
             accountLabel.visibility = View.VISIBLE
             accountLabel.text = shortenEmail(email)
             accountLabel.contentDescription = email
         } else {
+            avatar.visibility = View.GONE
             accountLabel.visibility = View.GONE
         }
         profileButton.setImageResource(
