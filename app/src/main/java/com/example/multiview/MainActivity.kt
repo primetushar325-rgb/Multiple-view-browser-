@@ -32,6 +32,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.example.multiview.appContainer
 import com.example.multiview.browser.PaneHost
 import com.example.multiview.data.PanesSnapshot
+import com.example.multiview.data.ProfileMode
 import com.example.multiview.databinding.ActivityMainBinding
 import com.example.multiview.panes.LayoutResolver
 import com.example.multiview.panes.PaneManager

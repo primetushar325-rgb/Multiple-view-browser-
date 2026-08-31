@@ -96,7 +96,7 @@ class PaneWebViewClient(
     }
 
     /** Maps a main-frame failure to the most honest one-line reason. */
-    @androidx.annotation.SuppressLint("deprecation") // errorCode is deprecated but the only signal on minSdk 24
+    @Suppress("DEPRECATION") // errorCode is deprecated but the only signal on minSdk 24
     private fun messageFor(view: WebView, code: Int): Int {
         val online = com.example.multiview.utils.NetUtils.isOnline(view.context)
         return when (code) {

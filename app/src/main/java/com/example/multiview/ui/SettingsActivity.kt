@@ -19,6 +19,7 @@ import com.example.multiview.databinding.ActivitySettingsBinding
 import com.example.multiview.panes.IsolatedProfileFactory
 import com.example.multiview.panes.LayoutResolver
 import com.google.android.material.slider.Slider
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 /** Every user-facing setting. Writes straight through to DataStore. */
